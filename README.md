@@ -1,6 +1,6 @@
 # 📱 EmbyX
 
-[中文说明](./README_zh.md)
+🇨🇳 [中文说明](./README_zh.md)
 
 [![GitHub Release](https://img.shields.io/github/v/release/juneix/embyx?style=flat-square&logo=github&color=52B54B)](https://github.com/juneix/embyx/releases)
 [![GitHub Stars](https://img.shields.io/github/stars/juneix/embyx?style=flat-square&logo=github&color=52B54B)](https://github.com/juneix/embyx/stargazers)
@@ -34,6 +34,7 @@ Try EmbyX instantly via the official web app:
 
 Prefer full control? You can **self-host** EmbyX on your own server.
 
+📚 Full Guide: [GitHub Wiki](https://github.com/juneix/EmbyX/wiki)
 
 ## 📢 Spread the Word
 
@@ -56,17 +57,19 @@ If EmbyX makes your digital life easier, please `star it on GitHub ⭐️`, or s
 | Key | Function |
 |:---:|---|
 | `W / S / ↑ / ↓` | Prev / Next Video |
-| `A / D / ← / →` | Rewind / Forward 15s |
+| `A / D / ← / → / Double Click Side` | Rewind / Forward 15s |
 | `Space / Click OK` | Pause / Play |
+| `Y` | Actor Works |
 | `U / Double Click OK` | Favorite Video |
+| `H` | Add to Playlist |
 | `J / Menu Key` | Toggle Aspect Ratio |
 | `M` | Toggle Mute |
-| `I` | Profile |
-| `E` | Toggle View |
-| `R` | Sequential / Random |
-| `F` | Toggle Fullscreen |
-| `G` | Select Libraries |
-| `V` | Media Info |
+| `E / Tab 1` | Toggle View |
+| `R / Tab 2` | Sequential / Random |
+| `G / Tab 3` | Select Library |
+| `I / Tab 4` | Profile |
+| `F / Top Right` | Toggle Fullscreen |
+| `V / Title Area` | Media Info |
 
 
 ## 📁 Directory Structure

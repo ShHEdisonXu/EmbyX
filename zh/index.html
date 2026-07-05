@@ -458,7 +458,7 @@
                                 <ul class="space-y-2 text-gray-400 text-xs mt-2 mb-3">
                                     <li class="flex items-center">
                                         <span class="text-primary mr-1.5">📚</span>
-                                        完整使用说明书：<a href="https://5nav.eu.org" target="_blank" class="text-primary hover:underline">谢週五の藏经阁</a>
+                                        完整使用教程：<a href="https://5nav.eu.org" target="_blank" class="text-primary hover:underline">谢週五の藏经阁</a>
                                     </li>
                                     <li class="flex items-center">
                                         <span class="text-primary mr-1.5">🎬</span>
@@ -2556,7 +2556,7 @@
 
             getImageSrc(video) {
                 const { server, token } = this.config;
-                const fallbackUrl = './poster.webp';
+                const fallbackUrl = 'poster.webp';
 
                 if (video && video.ImageTags && video.ImageTags.Primary) {
                     return fixUrlForJellyfin(`${server}/emby/Items/${video.Id}/Images/Primary?api_key=${token}`);
