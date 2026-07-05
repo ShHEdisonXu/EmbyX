@@ -150,6 +150,17 @@
                 display: none !important;
             }
         }
+
+        @keyframes heart-burst {
+            0% { transform: scale(0) rotate(var(--rot)); opacity: 0; }
+            40% { transform: scale(1.3) rotate(var(--rot)); opacity: 1; }
+            70% { transform: scale(1) rotate(var(--rot)); opacity: 1; }
+            100% { transform: scale(1) rotate(var(--rot)) translateY(-100px); opacity: 0; }
+        }
+        .heart-anim {
+            animation: heart-burst 0.6s ease-out forwards;
+            will-change: transform, opacity;
+        }
     </style>
 </head>
 
@@ -288,7 +299,7 @@
                 <h3 id="videoTitle" class="text-white text-lg font-medium mb-1 drop-shadow-md truncate pointer-events-auto cursor-pointer hover:underline inline-block max-w-full">正在初始化...</h3>
                 <div id="videoDescriptionArea" class="pointer-events-auto cursor-pointer">
                     <p id="videoDescription" class="text-gray-200 text-sm line-clamp-2 drop-shadow-md opacity-90 transition-all">
-                        请点击右下角“我的”进行服务器配置</p>
+                        请点击右下角“个人中心”配置服务器</p>
                 </div>
             </div>
 
@@ -346,20 +357,20 @@
                         </h2>
                         <div class="space-y-4 bg-gray-800/40 p-4 rounded-lg border border-gray-700/50">
                             <div>
-                                <label class="text-gray-400 text-xs block mb-1.5">服务器地址</label>
-                                <input type="text" id="configServer" placeholder="IP 或域名自动补全"
-                                    class="w-full bg-gray-900 text-white text-sm rounded px-3 py-2.5 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
+                                <label class="text-gray-400 text-xs block mb-1.5">IP 或域名</label>
+                                <input type="text" id="configServer" placeholder="支持 Emby / Jellyfin / 飞牛影视"
+                                    class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
                                     <label class="text-gray-400 text-xs block mb-1.5">用户名</label>
                                     <input type="text" id="configUser" placeholder="Username"
-                                        class="w-full bg-gray-900 text-white text-sm rounded px-3 py-2.5 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
+                                        class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
                                 </div>
                                 <div>
                                     <label class="text-gray-400 text-xs block mb-1.5">密码</label>
                                     <input type="password" id="configPwd" placeholder="Password"
-                                        class="w-full bg-gray-900 text-white text-sm rounded px-3 py-2.5 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
+                                        class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
                                 </div>
                             </div>
                             <div id="rowStatic" tabindex="0"
@@ -399,9 +410,9 @@
                             </div>
                             <div class="flex space-x-3 pt-2">
                                 <button id="resetConfigBtn"
-                                    class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm py-3 rounded-lg active:scale-95 transition-transform focusable-item">重置</button>
+                                    class="flex-1 h-11 flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg active:scale-95 transition-transform focusable-item">重置</button>
                                 <button id="saveConfigBtn"
-                                    class="flex-1 bg-primary hover:bg-primary/90 text-white text-sm py-3 rounded-lg font-bold active:opacity-80 shadow-lg shadow-primary/20 focusable-item">保存</button>
+                                    class="flex-1 h-11 flex items-center justify-center bg-primary hover:bg-primary/90 text-white text-sm rounded-lg font-bold active:opacity-80 shadow-lg shadow-primary/20 focusable-item">保存</button>
                             </div>
                         </div>
                     </div>
@@ -416,85 +427,45 @@
                         </h2>
                         <div
                             class="bg-gray-800/40 p-5 rounded-xl border border-gray-700/50 space-y-5 text-sm text-gray-300 leading-relaxed">
-                            <div class="flex items-center">
-                                <h3 class="text-white font-bold text-2xl tracking-tight">📱 EmbyX</h3>
-                                <span id="appVersionBadge"
-                                    class="ml-2 px-2 py-0.5 bg-primary/20 text-primary text-xs font-bold rounded-full border border-primary/30">v2.0</span>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="display: flex; height: 64px; width: 64px; align-items: center; justify-content: center; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); overflow: hidden; flex-shrink: 0;">
+                                    <img src="../zh/icon.png" style="height: 80%; width: 80%; object-fit: cover;">
+                                </div>
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <h3 class="text-white font-bold text-2xl tracking-tight">EmbyX</h3>
+                                        <span id="appVersionBadge"
+                                            class="px-2 py-0.5 bg-primary/20 text-primary text-xs font-bold rounded-full border border-primary/30">v2.0</span>
+                                    </div>
+                                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: #9ca3af; opacity: 0.6; line-height: 1.625;">藏尽世间美，光影皆留情。</p>
+                                </div>
                             </div>
 
                             <div>
                                 <p class="text-gray-300">👋 Hi～我叫<a href="https://juneix.github.io" target="_blank"
-                                        class="text-primary hover:underline">@谢週五</a>，EmbyX 是一款专为 Emby / Jellyfin（兼容飞牛影视🔥）打造的
+                                        class="text-primary hover:underline">@谢週五</a>，<b>EmbyX</b> 是一款专为 Emby / Jellyfin（兼容飞牛影视🔥）打造的
                                     Web 原生应用，完美复刻抖音·短视频沉浸式交互，让你的私人媒体库焕发全新的刷片体验。🎉</p>
                             </div>
 
                             <div
                                 class="text-yellow-500/90 text-xs bg-yellow-500/10 p-3 rounded-lg border border-yellow-500/20">
                                 <i data-lucide="shield-check" class="w-3 h-3 mr-1 inline"></i>
-                                数据全程保存在本地，完全免费。
-                            </div>
-
-                            <div>
-                                <h4 class="text-gray-300 flex items-center">
-                                    🔮 播放性能
-                                    <a href="./info.html"
-                                        class="ml-2 text-gray-500 hover:text-primary transition-colors active:scale-95"
-                                        title="检测播放能力">
-                                        <i data-lucide="cpu" class="w-4 h-4"></i>
-                                    </a>
-                                </h4>
-                                <ul class="list-disc list-inside space-y-1 text-gray-400 text-xs mt-2">
-                                    <li>原生 HTML5 播放器，新设备体验最佳</li>
-                                    <li>老设备需服务器转码，<del>不如放到**上回收(没打钱</del> 😂</li>
-                                </ul>
-                                <div class="bg-black/40 rounded-lg overflow-hidden border border-gray-700/50 mt-3">
-                                    <table class="w-full text-center text-[11px] leading-tight border-collapse">
-                                        <thead class="bg-gray-700/30 text-gray-400">
-                                            <tr>
-                                                <th class="px-2 py-1.5 border-r border-gray-700/50 font-medium">设备</th>
-                                                <th class="px-2 py-1.5 border-r border-gray-700/50 font-medium">HEVC 硬解
-                                                </th>
-                                                <th class="px-2 py-1.5 font-medium">AV1 硬解</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-gray-700/50 text-gray-400">
-                                            <tr>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50 text-primary">
-                                                    苹果</td>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50">A9 (2015) / M1</td>
-                                                <td class="px-2 py-1.5">A17 Pro (2023) / M3</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50 text-primary">
-                                                    安卓</td>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50">千元机 (2016)</td>
-                                                <td class="px-2 py-1.5">千元机 (2024)</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50 text-primary">
-                                                    PC</td>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50">6～8 代酷睿·核显</td>
-                                                <td class="px-2 py-1.5">11 代酷睿·核显</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                数据全程保存在本地，免费开源。
                             </div>
 
                             <div>
                                 <h4 class="text-gray-300">🧩 使用技巧</h4>
-                                <ul class="list-disc list-inside space-y-1 text-gray-400 text-xs mt-2">
-                                    <li>入库更快：媒体库类型选「家庭视频」</li>
-                                    <li>加载更顺：每个媒体库 < 1000 个视频</li>
-                                    <li>管理更爽：使用多个媒体库和播放列表</li>
-                                    <li>进度更稳：拖动带加速度，可双击侧边</li>
-                                    <li>PWA 应用：添加到主屏幕/作为应用安装</li>
+                                <ul class="space-y-2 text-gray-400 text-xs mt-2 mb-3">
+                                    <li class="flex items-center">
+                                        <span class="text-primary mr-1.5">📚</span>
+                                        完整项目说明书：<a href="https://5nav.eu.org" target="_blank" class="text-primary hover:underline">谢週五の藏经阁</a>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <span class="text-primary mr-1.5">🎬</span>
+                                        H5 播放器，新设备体验最佳，可参考 >>&nbsp;<a href="./info.html" class="text-primary hover:underline">性能检测</a>
+                                    </li>
                                 </ul>
-                            </div>
-
-                            <div>
-                                <h4 class="text-gray-300">⌨️ 快捷键指南</h4>
-                                <div class="bg-black/40 rounded-lg overflow-hidden border border-gray-700/50 mt-2">
+                                <div class="bg-black/40 rounded-lg overflow-hidden border border-gray-700/50">
                                     <table class="w-full text-center text-[11px] leading-tight">
                                         <thead class="bg-gray-700/30 text-gray-400">
                                             <tr>
@@ -506,11 +477,11 @@
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">W / S /
                                                     ↑ / ↓</td>
-                                                <td class="px-3 py-1.5">上一个 / 下一个视频</td>
+                                                <td class="px-3 py-1.5">上一个 / 下一个</td>
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">A / D /
-                                                    ← / →</td>
+                                                    ← / → / 双击侧边</td>
                                                 <td class="px-3 py-1.5">快退 / 快进 15 秒</td>
                                             </tr>
                                             <tr>
@@ -519,12 +490,21 @@
                                                 <td class="px-3 py-1.5">暂停 / 播放</td>
                                             </tr>
                                             <tr>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">Y</td>
+                                                <td class="px-3 py-1.5">演员作品</td>
+                                            </tr>
+                                            <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">U / 双击
                                                     OK</td>
                                                 <td class="px-3 py-1.5">收藏视频</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">J / 菜单键
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">H
+                                                </td>
+                                                <td class="px-3 py-1.5">添加播放列表</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">J
                                                 </td>
                                                 <td class="px-2 py-1.5">比例切换</td>
                                             </tr>
@@ -533,32 +513,27 @@
                                                 <td class="px-3 py-1.5">音量开关</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">I</td>
-                                                <td class="px-3 py-1.5">个人中心</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">E</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">E / Tab 1</td>
                                                 <td class="px-3 py-1.5">视图切换</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">Y</td>
-                                                <td class="px-3 py-1.5">演员作品</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">R</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">R / Tab 2</td>
                                                 <td class="px-3 py-1.5">顺序 / 随机</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">F</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">G / Tab 3</td>
+                                                <td class="px-3 py-1.5">选择媒体源</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">I / Tab 4</td>
+                                                <td class="px-3 py-1.5">个人中心</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">F / 右上角</td>
                                                 <td class="px-3 py-1.5">全屏切换</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">G</td>
-                                                <td class="px-3 py-1.5">选择媒体源</td>
-                                            </tr>
-
-                                            <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">V</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">V / 标题区</td>
                                                 <td class="px-3 py-1.5">流媒体详情</td>
                                             </tr>
                                         </tbody>
@@ -572,38 +547,35 @@
                                 <!-- 胶囊按钮组：社区 & 开源 -->
                                 <div class="grid grid-cols-2 gap-2 mt-3">
                                     <a href="https://space.bilibili.com/765334" target="_blank"
-                                        class="flex items-center justify-center text-[#FB7299] bg-[#FB7299]/10 hover:bg-[#FB7299]/20 px-3 py-1.5 rounded-full transition-colors border border-[#FB7299]/20 text-[10px] whitespace-nowrap active:scale-95">
+                                        class="flex items-center justify-center text-[#FB7299] bg-[#FB7299]/10 hover:bg-[#FB7299]/20 px-3 h-11 rounded-full transition-colors border border-[#FB7299]/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/bilibili/FB7299"
                                             class="w-3.5 h-3.5 mr-1.5" alt="Bilibili" /> B 站·教程</a>
                                     <a href="https://xhslink.com/m/7JytoZm2Rpl" target="_blank"
-                                        class="flex items-center justify-center text-[#FF2442] bg-[#FF2442]/10 hover:bg-[#FF2442]/20 px-3 py-1.5 rounded-full transition-colors border border-[#FF2442]/20 text-[10px] whitespace-nowrap active:scale-95">
+                                        class="flex items-center justify-center text-[#FF2442] bg-[#FF2442]/10 hover:bg-[#FF2442]/20 px-3 h-11 rounded-full transition-colors border border-[#FF2442]/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/xiaohongshu/FF2442"
                                             class="w-3.5 h-3.5 mr-1.5" alt="Xiaohongshu" /> 小红书·攻略</a>
                                     <a href="https://qm.qq.com/q/KhRMpYLnGi" target="_blank"
-                                        class="flex items-center justify-center text-[#12B7F5] bg-[#12B7F5]/10 hover:bg-[#12B7F5]/20 px-3 py-1.5 rounded-full transition-colors border border-[#12B7F5]/20 text-[10px] whitespace-nowrap active:scale-95">
+                                        class="flex items-center justify-center text-[#12B7F5] bg-[#12B7F5]/10 hover:bg-[#12B7F5]/20 px-3 h-11 rounded-full transition-colors border border-[#12B7F5]/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/qq/12B7F5" class="w-3.5 h-3.5 mr-1.5"
                                             alt="QQ" /> QQ 群·催更</a>
                                     <a href="https://github.com/juneix/embyx" target="_blank"
-                                        class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap active:scale-95">
+                                        class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 h-11 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/github/white" class="w-3.5 h-3.5 mr-1.5"
                                             alt="GitHub" /> GitHub · 开源</a>
                                 </div>
                                 <!-- 打赏区 -->
-                                <p class="text-gray-400 text-xs mt-4 mb-2">☕ 打赏鼓励，支持我开发更多有趣应用～</p>
-                                <div class="flex justify-center space-x-3">
-                                    <a href="weixin://profile/gh_86f7c0a73738">
-                                        <div class="flex flex-col items-center">
-                                            <img src="wechat.webp" alt="微信" class="w-24 h-24 object-cover rounded">
-                                            <span class="text-[10px] text-gray-400 mt-1">微信</span>
-                                        </div>
-                                    </a>
-                                    <a
-                                        href="alipays://platformapi/startapp?saId=10000007&clientVersion=3.7.0.0718&qrcode=https%3A%2F%2Fqr.alipay.com%2Ffkx15248wilbz2ddz96og40">
-                                        <div class="flex flex-col items-center">
-                                            <img src="alipay.webp" alt="支付宝" class="w-24 h-24 object-cover rounded">
-                                            <span class="text-[10px] text-gray-400 mt-1">支付宝</span>
-                                        </div>
-                                    </a>
+                                <div class="rounded-2xl border border-white/10 bg-white/5 py-5 px-0 text-center mt-4">
+                                    <p class="text-gray-400 text-xs font-medium mb-4">☕ 打赏鼓励，支持我开发更多有趣应用～</p>
+                                    <div class="flex justify-center gap-5">
+                                        <a href="weixin://profile/gh_86f7c0a73738" class="flex flex-col items-center gap-2">
+                                            <img src="wechat.webp" alt="微信" class="w-[140px] h-[140px] rounded-xl object-cover border border-white/10">
+                                            <span class="text-[10px] text-gray-400/60">微信</span>
+                                        </a>
+                                        <a href="alipays://platformapi/startapp?saId=10000007&clientVersion=3.7.0.0718&qrcode=https%3A%2F%2Fqr.alipay.com%2Ffkx15248wilbz2ddz96og40" class="flex flex-col items-center gap-2">
+                                            <img src="alipay.webp" alt="支付宝" class="w-[140px] h-[140px] rounded-xl object-cover border border-white/10">
+                                            <span class="text-[10px] text-gray-400/60">支付宝</span>
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
 
@@ -3805,10 +3777,13 @@
             bindKeyboard() {
                 let okClickCount = 0;
                 let okClickTimer = null;
+                let uClickCount = 0;
+                let uClickTimer = null;
 
                 document.addEventListener('keydown', (e) => {
                     const profileActive = document.getElementById('profilePage').classList.contains('active');
                     const libraryActive = !document.getElementById('libraryModal').classList.contains('hidden');
+                    const playlistActive = !document.getElementById('addToPlaylistModal').classList.contains('hidden');
 
                     // 如果正在输入（且不是在处理遥控器方向键时），不触发全局快捷键
                     // 但我们要允许在输入框内通过上下键跳转焦点
@@ -3818,13 +3793,30 @@
                     const keyCode = e.keyCode;
                     const lowKey = key.toLowerCase(); // 提前声明，全局可用
 
+                    // ESC: 关闭任何打开的弹窗
+                    if (key === 'Escape') {
+                        const modals = ['addToPlaylistModal', 'libraryModal', 'mediaInfoModal', 'deleteConfirmModal', 'syncConfirmModal'];
+                        for (const id of modals) {
+                            const el = document.getElementById(id);
+                            if (el && !el.classList.contains('hidden')) {
+                                this.toggleModal(id, false);
+                                return;
+                            }
+                        }
+                        if (profileActive) {
+                            this.toggleModal('profilePage', false);
+                            return;
+                        }
+                    }
+
                     // --- 个人中心 / 弹窗 / 网格列表内的空间导航 (Remote Control / Keyboard Focus) ---
-                    if (profileActive || libraryActive || document.getElementById('app').classList.contains('grid-active')) {
+                    if (profileActive || libraryActive || playlistActive || document.getElementById('app').classList.contains('grid-active')) {
                         if (isInput) return;
                         const items = Array.from(document.querySelectorAll(
                             profileActive ? '#profilePage .focusable-item' :
                                 libraryActive ? '#libraryModal .focusable-item' :
-                                    '#videoContainer .focusable-item'
+                                    playlistActive ? '#addToPlaylistModal .focusable-item' :
+                                        '#videoContainer .focusable-item'
                         ));
                         let currentIndex = items.indexOf(document.activeElement);
                         if (!isInput && (key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight' ||
@@ -3904,8 +3896,9 @@
                         // OK / Enter 在焦点元素上触发点击
                         if (key === 'Enter' || keyCode === 13) {
                             if (document.activeElement && document.activeElement.classList.contains('focusable-item')) {
-                                // 如果是输入框，回车不拦截，允许系统处理（弹出键盘等）
-                                if (document.activeElement.tagName.toLowerCase() === 'input' && document.activeElement.type !== 'checkbox') {
+                                // 如果是输入框或文本域，回车不拦截，允许系统处理
+                                const tagName = document.activeElement.tagName.toLowerCase();
+                                if (tagName === 'textarea' || (tagName === 'input' && document.activeElement.type !== 'checkbox')) {
                                     return;
                                 }
                                 e.preventDefault();
@@ -4010,9 +4003,27 @@
                                     this.showMediaInfo();
                                 }
                             }
-                            this.handleDoubleTap(window.innerWidth / 2, window.innerHeight / 2);
                         } else if (lowKey === 'm') {
                             this.dom.muteBtn.click();
+                        } else if (lowKey === 'u') {
+                            // 立即展示中心爱心特效
+                            const heart = document.createElement('div');
+                            heart.className = 'heart-anim absolute pointer-events-none z-50';
+                            heart.style.cssText = `left:calc(50% - 32px);top:calc(50% - 32px);--rot:${Math.floor(Math.random() * 40) - 20}deg`;
+                            heart.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="drop-shadow-xl"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
+                            document.getElementById('app').appendChild(heart);
+                            heart.addEventListener('animationend', () => heart.remove());
+
+                            const id = String(this.state.videos[this.state.currentIndex]?.Id);
+                            if (!this.state.favorites.has(id)) {
+                                this.toggleFavorite();
+                                const favBtn = document.getElementById('favoriteBtn');
+                                if (favBtn) {
+                                    favBtn.innerHTML = `<div class="w-12 h-12 flex items-center justify-center"><i data-lucide="heart" class="text-secondary fill-secondary w-6 h-6 drop-shadow-md"></i></div>`;
+                                    lucide.createIcons({ root: favBtn });
+                                }
+                            }
+                            this.showInterfaceTemp();
                         } else if (lowKey === 'y' ) {
                             // Y: toggle person filter - enter if person, exit if already filtering
                             if (this.state.isFilteredByPerson) {
@@ -4020,6 +4031,14 @@
                             } else {
                                 const btn = document.getElementById('personBtn');
                                 if (btn && btn.dataset.personName) btn.click();
+                            }
+                        } else if (lowKey === 'h') {
+                            const playlistModal = document.getElementById('addToPlaylistModal');
+                            if (playlistModal && !playlistModal.classList.contains('hidden')) {
+                                this.toggleModal('addToPlaylistModal', false);
+                            } else {
+                                this.showAddToPlaylist();
+                                this.showInterfaceTemp();
                             }
                         }
                     }
@@ -4307,32 +4326,13 @@
 
             // 新增: 双击点赞动画与收藏逻辑
             async handleDoubleTap(x, y) {
-                // 1. 点赞动画 DOM 生成
+                // 1. 点赞动画 DOM 生成 (纯 SVG + 高性能 GPU 动画)
                 const heart = document.createElement('div');
-                heart.innerHTML = '<i data-lucide="heart" class="fill-red-500 text-red-500 w-16 h-16 drop-shadow-xl"></i>';
-                heart.className = 'absolute pointer-events-none z-50 transform pointer-events-none transition-all duration-700 ease-out';
-
-                // 随机偏转角度
-                const rotation = Math.floor(Math.random() * 40) - 20;
-                heart.style.left = `${x - 32}px`;
-                heart.style.top = `${y - 32}px`;
-                heart.style.transform = `scale(0.5) rotate(${rotation}deg)`;
-                heart.style.opacity = '0';
-
+                heart.className = 'heart-anim absolute pointer-events-none z-50';
+                heart.style.cssText = `left:${x - 32}px;top:${y - 32}px;--rot:${Math.floor(Math.random() * 40) - 20}deg`;
+                heart.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="drop-shadow-xl"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
                 document.getElementById('app').appendChild(heart);
-                lucide.createIcons({ root: heart });
-
-                // 动画序列
-                requestAnimationFrame(() => {
-                    heart.style.transform = `scale(1.2) rotate(${rotation}deg)`;
-                    heart.style.opacity = '1';
-
-                    setTimeout(() => {
-                        heart.style.transform = `scale(1) rotate(${rotation}deg) translateY(-100px)`;
-                        heart.style.opacity = '0';
-                        setTimeout(() => heart.remove(), 700);
-                    }, 200);
-                });
+                heart.addEventListener('animationend', () => heart.remove());
 
                 // 2. 自动标记收藏（如未收藏则添加）
                 const currentVideo = this.state.videos[this.state.currentIndex];

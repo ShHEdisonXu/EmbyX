@@ -138,6 +138,17 @@
                 display: none !important;
             }
         }
+
+        @keyframes heart-burst {
+            0% { transform: scale(0) rotate(var(--rot)); opacity: 0; }
+            40% { transform: scale(1.3) rotate(var(--rot)); opacity: 1; }
+            70% { transform: scale(1) rotate(var(--rot)); opacity: 1; }
+            100% { transform: scale(1) rotate(var(--rot)) translateY(-100px); opacity: 0; }
+        }
+        .heart-anim {
+            animation: heart-burst 0.6s ease-out forwards;
+            will-change: transform, opacity;
+        }
     </style>
 </head>
 
@@ -256,7 +267,7 @@
                 <h3 id="videoTitle" class="text-white text-lg font-medium mb-1 drop-shadow-md truncate pointer-events-auto cursor-pointer hover:underline inline-block max-w-full">Initializing...</h3>
                 <div id="videoDescriptionArea" class="pointer-events-auto cursor-pointer">
                     <p id="videoDescription" class="text-gray-200 text-sm line-clamp-2 drop-shadow-md opacity-90 transition-all">
-                        Click the 'Profile' button at bottom right to configure server.</p>
+                        Tap bottom right to configure server.</p>
                 </div>
             </div>
 
@@ -313,19 +324,19 @@
                         <div class="space-y-4 bg-gray-800/40 p-4 rounded-lg border border-gray-700/50">
                             <div>
                                 <label class="text-gray-400 text-xs block mb-1.5">Server URL</label>
-                                <input type="text" id="configServer" placeholder="Auto-completion of IP or domain name"
-                                    class="w-full bg-gray-900 text-white text-sm rounded px-3 py-2.5 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
+                                <input type="text" id="configServer" placeholder="Auto-complete IP or Domain"
+                                    class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
                                     <label class="text-gray-400 text-xs block mb-1.5">Username</label>
-                                    <input type="text" id="configUser" placeholder="Username"
-                                        class="w-full bg-gray-900 text-white text-sm rounded px-3 py-2.5 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
+                                    <input type="text" id="configUser" placeholder=""
+                                        class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
                                 </div>
                                 <div>
                                     <label class="text-gray-400 text-xs block mb-1.5">Password</label>
-                                    <input type="password" id="configPwd" placeholder="Password"
-                                        class="w-full bg-gray-900 text-white text-sm rounded px-3 py-2.5 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
+                                    <input type="password" id="configPwd" placeholder=""
+                                        class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
                                 </div>
                             </div>
                             <div id="rowStatic" tabindex="0"
@@ -366,9 +377,9 @@
                             </div>
                             <div class="flex space-x-3 pt-2">
                                 <button id="resetConfigBtn"
-                                    class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm py-3 rounded-lg active:scale-95 transition-transform focusable-item">Reset</button>
+                                    class="flex-1 h-11 flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg active:scale-95 transition-transform focusable-item">Reset</button>
                                 <button id="saveConfigBtn"
-                                    class="flex-1 bg-primary hover:bg-primary/90 text-white text-sm py-3 rounded-lg font-bold active:opacity-80 shadow-lg shadow-primary/20 focusable-item">Save</button>
+                                    class="flex-1 h-11 flex items-center justify-center bg-primary hover:bg-primary/90 text-white text-sm rounded-lg font-bold active:opacity-80 shadow-lg shadow-primary/20 focusable-item">Save</button>
                             </div>
                         </div>
                     </div>
@@ -383,10 +394,18 @@
                         </h2>
                         <div
                             class="bg-gray-800/40 p-5 rounded-xl border border-gray-700/50 space-y-5 text-sm text-gray-300 leading-relaxed">
-                            <div class="flex items-center">
-                                <h3 class="text-white font-bold text-2xl tracking-tight">📱 EmbyX</h3>
-                                <span id="appVersionBadge"
-                                    class="ml-2 px-2 py-0.5 bg-primary/20 text-primary text-xs font-bold rounded-full border border-primary/30">v1.1</span>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="display: flex; height: 64px; width: 64px; align-items: center; justify-content: center; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); overflow: hidden; flex-shrink: 0;">
+                                    <img src="./icon.png" style="height: 80%; width: 80%; object-fit: cover;">
+                                </div>
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <h3 class="text-white font-bold text-2xl tracking-tight">EmbyX</h3>
+                                        <span id="appVersionBadge"
+                                            class="px-2 py-0.5 bg-primary/20 text-primary text-xs font-bold rounded-full border border-primary/30">v2.0</span>
+                                    </div>
+                                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: #9ca3af; opacity: 0.6; line-height: 1.625;">Collect the World, Love the Beauty.</p>
+                                </div>
                             </div>
 
                             <div>
@@ -403,62 +422,18 @@
                             </div>
 
                             <div>
-                                <h4 class="text-gray-300">🔮 Playback</h4>
-                                <ul class="list-disc list-inside space-y-1 text-gray-400 text-xs mt-2">
-                                    <li>Native HTML5 player, best on modern devices.</li>
-                                    <li>Older devices can use server transcoding.</li>
-                                </ul>
-                                <div class="bg-black/40 rounded-lg overflow-hidden border border-gray-700/50 mt-3">
-                                    <table class="w-full text-center text-[11px] leading-tight border-collapse">
-                                        <thead class="bg-gray-700/30 text-gray-400">
-                                            <tr>
-                                                <th class="px-2 py-1.5 border-r border-gray-700/50 font-medium">Device
-                                                </th>
-                                                <th class="px-2 py-1.5 border-r border-gray-700/50 font-medium">HEVC
-                                                    Decode
-                                                </th>
-                                                <th class="px-2 py-1.5 font-medium">AV1 Decode</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-gray-700/50 text-gray-400">
-                                            <tr>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50 text-primary">
-                                                    Apple</td>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50">A9 (2015) / M1</td>
-                                                <td class="px-2 py-1.5">A17 Pro (2023) / M3</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50 text-primary">
-                                                    Android</td>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50">Budget Phones (2016)
-                                                </td>
-                                                <td class="px-2 py-1.5">Budget Phones (2024)</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50 text-primary">
-                                                    PC</td>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50">Intel 6th-8th Gen
-                                                    iGPU</td>
-                                                <td class="px-2 py-1.5">Intel 11th Gen iGPU</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <div>
                                 <h4 class="text-gray-300">🧩 Tips & Tricks</h4>
-                                <ul class="list-disc list-inside space-y-1 text-gray-400 text-xs mt-2">
-                                    <li>Faster Importing: Use "Home Video" library type.</li>
-                                    <li>Smoother Loading: Limit libraries to < 1,000 videos.</li>
-                                    <li>Easier Managing: Use multiple libraries and playlists.</li>
-                                    <li>PWA Support: Add to Home Screen or Install as App. 📲</li>
+                                <ul class="space-y-2 text-gray-400 text-xs mt-2 mb-3">
+                                    <li class="flex items-center">
+                                        <span class="text-primary mr-1.5">📚</span>
+                                        Full Guide:&nbsp;<a href="https://github.com/juneix/EmbyX/wiki" target="_blank" class="text-primary hover:underline">GitHub Wiki</a>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <span class="text-primary mr-1.5">🎬</span>
+                                        Best on modern devices:&nbsp;<a href="./info.html" class="text-primary hover:underline">Perf Check</a>
+                                    </li>
                                 </ul>
-                            </div>
-
-                            <div>
-                                <h4 class="text-gray-300">⌨️ Shortcuts</h4>
-                                <div class="bg-black/40 rounded-lg overflow-hidden border border-gray-700/50 mt-2">
+                                <div class="bg-black/40 rounded-lg overflow-hidden border border-gray-700/50">
                                     <table class="w-full text-center text-[11px] leading-tight">
                                         <thead class="bg-gray-700/30 text-gray-400">
                                             <tr>
@@ -474,7 +449,7 @@
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">A / D /
-                                                    ← / →</td>
+                                                    ← / → / Double Click Side</td>
                                                 <td class="px-3 py-1.5">Rewind / Forward 15s</td>
                                             </tr>
                                             <tr>
@@ -483,48 +458,47 @@
                                                 <td class="px-3 py-1.5">Pause / Play</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">U /
-                                                    Double Click
-                                                    OK</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">Y</td>
+                                                <td class="px-3 py-1.5">Actor Works</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">U / Double Click OK</td>
                                                 <td class="px-3 py-1.5">Favorite Video</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">J /
-                                                    Menu Key
-                                                </td>
-                                                <td class="px-2 py-1.5">Toggle Aspect Ratio</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">H</td>
+                                                <td class="px-3 py-1.5">Add to Playlist</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">J</td>
+                                                <td class="px-3 py-1.5">Toggle Aspect Ratio</td>
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">M</td>
                                                 <td class="px-3 py-1.5">Toggle Mute</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">I</td>
-                                                <td class="px-3 py-1.5">Profile</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">E</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">E / Tab 1</td>
                                                 <td class="px-3 py-1.5">Toggle View</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">Y</td>
-                                                <td class="px-3 py-1.5">Actor Works</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">R</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">R / Tab 2</td>
                                                 <td class="px-3 py-1.5">Sequential / Random</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">F</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">G / Tab 3</td>
+                                                <td class="px-3 py-1.5">Select Library</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">I / Tab 4</td>
+                                                <td class="px-3 py-1.5">Profile</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">F / Top Right</td>
                                                 <td class="px-3 py-1.5">Toggle Fullscreen</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">G</td>
-                                                <td class="px-3 py-1.5">Select Library</td>
-                                            </tr>
-
-                                            <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">V</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">V / Title Area</td>
                                                 <td class="px-3 py-1.5">Media Info</td>
                                             </tr>
                                         </tbody>
@@ -542,19 +516,19 @@
                                 </ul>
                                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4">
                                     <a href="https://x.com/juneix_tse" target="_blank"
-                                        class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap">
+                                        class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 h-11 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap">
                                         <img src="https://cdn.simpleicons.org/x/white" class="w-3.5 h-3.5 mr-1.5"
                                             alt="X" /> Twitter • Follow</a>
                                     <a href="https://t.me/juneix_en" target="_blank"
-                                        class="flex items-center justify-center text-[#26A5E4] bg-[#26A5E4]/10 hover:bg-[#26A5E4]/20 px-3 py-1.5 rounded-full transition-colors border border-[#26A5E4]/20 text-[10px] whitespace-nowrap">
+                                        class="flex items-center justify-center text-[#26A5E4] bg-[#26A5E4]/10 hover:bg-[#26A5E4]/20 px-3 h-11 rounded-full transition-colors border border-[#26A5E4]/20 text-[10px] whitespace-nowrap">
                                         <img src="https://cdn.simpleicons.org/telegram/26A5E4"
                                             class="w-3.5 h-3.5 mr-1.5" alt="Telegram" /> Telegram • Channel</a>
                                     <a href="https://ko-fi.com/juneixtse" target="_blank"
-                                        class="flex items-center justify-center text-[#FF6433] bg-[#FF5E5B]/10 hover:bg-[#FF5E5B]/20 px-3 py-1.5 rounded-full transition-colors border border-[#FF5E5B]/20 text-[10px] whitespace-nowrap">
+                                        class="flex items-center justify-center text-[#FF6433] bg-[#FF5E5B]/10 hover:bg-[#FF5E5B]/20 px-3 h-11 rounded-full transition-colors border border-[#FF5E5B]/20 text-[10px] whitespace-nowrap">
                                         <img src="https://cdn.simpleicons.org/kofi/FF6433" class="w-3.5 h-3.5 mr-1.5"
                                             alt="Ko-fi" /> Ko-fi • Support</a>
                                     <a href="https://github.com/juneix/embyx" target="_blank"
-                                        class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap active:scale-95">
+                                        class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 h-11 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/github/white" class="w-3.5 h-3.5 mr-1.5"
                                             alt="GitHub" /> GitHub • Source</a>
                                 </div>
@@ -3341,10 +3315,13 @@
             bindKeyboard() {
                 let okClickCount = 0;
                 let okClickTimer = null;
+                let uClickCount = 0;
+                let uClickTimer = null;
 
                 document.addEventListener('keydown', (e) => {
                     const profileActive = document.getElementById('profilePage').classList.contains('active');
                     const libraryActive = !document.getElementById('libraryModal').classList.contains('hidden');
+                    const playlistActive = !document.getElementById('addToPlaylistModal').classList.contains('hidden');
 
                     const isInput = ['input', 'textarea'].includes(document.activeElement.tagName.toLowerCase());
 
@@ -3352,12 +3329,29 @@
                     const keyCode = e.keyCode;
                     const lowKey = key.toLowerCase();
 
-                    if (profileActive || libraryActive || document.getElementById('app').classList.contains('grid-active')) {
+                    // ESC: 关闭任何打开的弹窗
+                    if (key === 'Escape') {
+                        const modals = ['addToPlaylistModal', 'libraryModal', 'mediaInfoModal', 'deleteConfirmModal', 'syncConfirmModal'];
+                        for (const id of modals) {
+                            const el = document.getElementById(id);
+                            if (el && !el.classList.contains('hidden')) {
+                                this.toggleModal(id, false);
+                                return;
+                            }
+                        }
+                        if (profileActive) {
+                            this.toggleModal('profilePage', false);
+                            return;
+                        }
+                    }
+
+                    if (profileActive || libraryActive || playlistActive || document.getElementById('app').classList.contains('grid-active')) {
                         if (isInput) return;
                         const items = Array.from(document.querySelectorAll(
                             profileActive ? '#profilePage .focusable-item' :
                                 libraryActive ? '#libraryModal .focusable-item' :
-                                    '#videoContainer .focusable-item'
+                                    playlistActive ? '#addToPlaylistModal .focusable-item' :
+                                        '#videoContainer .focusable-item'
                         ));
                         let currentIndex = items.indexOf(document.activeElement);
                         if (!isInput && (key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight' ||
@@ -3430,7 +3424,8 @@
 
                         if (key === 'Enter' || keyCode === 13) {
                             if (document.activeElement && document.activeElement.classList.contains('focusable-item')) {
-                                if (document.activeElement.tagName.toLowerCase() === 'input' && document.activeElement.type !== 'checkbox') {
+                                const tagName = document.activeElement.tagName.toLowerCase();
+                                if (tagName === 'textarea' || (tagName === 'input' && document.activeElement.type !== 'checkbox')) {
                                     return;
                                 }
                                 e.preventDefault();
@@ -3525,9 +3520,27 @@
                                     this.showMediaInfo();
                                 }
                             }
-                            this.handleDoubleTap(window.innerWidth / 2, window.innerHeight / 2);
                         } else if (lowKey === 'm') {
                             this.dom.muteBtn.click();
+                        } else if (lowKey === 'u') {
+                            // Instant center heart burst (pure SVG + high performance CSS)
+                            const heart = document.createElement('div');
+                            heart.className = 'heart-anim absolute pointer-events-none z-50';
+                            heart.style.cssText = `left:calc(50% - 32px);top:calc(50% - 32px);--rot:${Math.floor(Math.random() * 40) - 20}deg`;
+                            heart.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="drop-shadow-xl"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
+                            document.getElementById('app').appendChild(heart);
+                            heart.addEventListener('animationend', () => heart.remove());
+
+                            const id = String(this.state.videos[this.state.currentIndex]?.Id);
+                            if (!this.state.favorites.has(id)) {
+                                this.toggleFavorite();
+                                const favBtn = document.getElementById('favoriteBtn');
+                                if (favBtn) {
+                                    favBtn.innerHTML = `<div class="w-12 h-12 flex items-center justify-center"><i data-lucide="heart" class="text-secondary fill-secondary w-6 h-6 drop-shadow-md"></i></div>`;
+                                    lucide.createIcons({ root: favBtn });
+                                }
+                            }
+                            this.showInterfaceTemp();
                         } else if (lowKey === 'y') {
                             // Y: toggle person filter - enter if person, exit if already filtering
                             if (this.state.isFilteredByPerson) {
@@ -3535,6 +3548,14 @@
                             } else {
                                 const btn = document.getElementById('personBtn');
                                 if (btn && btn.dataset.personName) btn.click();
+                            }
+                        } else if (lowKey === 'h') {
+                            const playlistModal = document.getElementById('addToPlaylistModal');
+                            if (playlistModal && !playlistModal.classList.contains('hidden')) {
+                                this.toggleModal('addToPlaylistModal', false);
+                            } else {
+                                this.showAddToPlaylist();
+                                this.showInterfaceTemp();
                             }
                         }
                     }
@@ -3818,29 +3839,13 @@
             }
 
             async handleDoubleTap(x, y) {
+                // 1. Point animation DOM generation (pure SVG + high performance CSS)
                 const heart = document.createElement('div');
-                heart.innerHTML = '<i data-lucide="heart" class="fill-red-500 text-red-500 w-16 h-16 drop-shadow-xl"></i>';
-                heart.className = 'absolute pointer-events-none z-50 transform pointer-events-none transition-all duration-700 ease-out';
-
-                const rotation = Math.floor(Math.random() * 40) - 20;
-                heart.style.left = `${x - 32}px`;
-                heart.style.top = `${y - 32}px`;
-                heart.style.transform = `scale(0.5) rotate(${rotation}deg)`;
-                heart.style.opacity = '0';
-
+                heart.className = 'heart-anim absolute pointer-events-none z-50';
+                heart.style.cssText = `left:${x - 32}px;top:${y - 32}px;--rot:${Math.floor(Math.random() * 40) - 20}deg`;
+                heart.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="drop-shadow-xl"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
                 document.getElementById('app').appendChild(heart);
-                lucide.createIcons({ root: heart });
-
-                requestAnimationFrame(() => {
-                    heart.style.transform = `scale(1.2) rotate(${rotation}deg)`;
-                    heart.style.opacity = '1';
-
-                    setTimeout(() => {
-                        heart.style.transform = `scale(1) rotate(${rotation}deg) translateY(-100px)`;
-                        heart.style.opacity = '0';
-                        setTimeout(() => heart.remove(), 700);
-                    }, 200);
-                });
+                heart.addEventListener('animationend', () => heart.remove());
 
                 const currentVideo = this.state.videos[this.state.currentIndex];
                 if (currentVideo && !currentVideo.UserData?.IsFavorite) {

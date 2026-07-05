@@ -314,18 +314,18 @@
                             <div>
                                 <label class="text-gray-400 text-xs block mb-1.5">Server URL</label>
                                 <input type="text" id="configServer" placeholder="Auto-completion of IP or domain name"
-                                    class="w-full bg-gray-900 text-white text-sm rounded px-3 py-2.5 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
+                                    class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
                                     <label class="text-gray-400 text-xs block mb-1.5">Username</label>
                                     <input type="text" id="configUser" placeholder="Username"
-                                        class="w-full bg-gray-900 text-white text-sm rounded px-3 py-2.5 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
+                                        class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
                                 </div>
                                 <div>
                                     <label class="text-gray-400 text-xs block mb-1.5">Password</label>
                                     <input type="password" id="configPwd" placeholder="Password"
-                                        class="w-full bg-gray-900 text-white text-sm rounded px-3 py-2.5 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
+                                        class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
                                 </div>
                             </div>
                             <div id="rowStatic" tabindex="0"
@@ -374,9 +374,9 @@
                             </div>
                             <div class="flex space-x-3 pt-2">
                                 <button id="resetConfigBtn"
-                                    class="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-sm py-3 rounded-lg active:scale-95 transition-transform focusable-item">Reset</button>
+                                    class="flex-1 h-11 flex items-center justify-center bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg active:scale-95 transition-transform focusable-item">Reset</button>
                                 <button id="saveConfigBtn"
-                                    class="flex-1 bg-primary hover:bg-primary/90 text-white text-sm py-3 rounded-lg font-bold active:opacity-80 shadow-lg shadow-primary/20 focusable-item">Save</button>
+                                    class="flex-1 h-11 flex items-center justify-center bg-primary hover:bg-primary/90 text-white text-sm rounded-lg font-bold active:opacity-80 shadow-lg shadow-primary/20 focusable-item">Save</button>
                             </div>
                         </div>
                     </div>
@@ -391,10 +391,18 @@
                         </h2>
                         <div
                             class="bg-gray-800/40 p-5 rounded-xl border border-gray-700/50 space-y-5 text-sm text-gray-300 leading-relaxed">
-                            <div class="flex items-center">
-                                <h3 class="text-white font-bold text-2xl tracking-tight">📱 EmbyX</h3>
-                                <span id="appVersionBadge"
-                                    class="ml-2 px-2 py-0.5 bg-primary/20 text-primary text-xs font-bold rounded-full border border-primary/30">v1.1</span>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="display: flex; height: 64px; width: 64px; align-items: center; justify-content: center; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); overflow: hidden; flex-shrink: 0;">
+                                    <img src="./icon.png" style="height: 80%; width: 80%; object-fit: cover;">
+                                </div>
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <h3 class="text-white font-bold text-2xl tracking-tight">EmbyX</h3>
+                                        <span id="appVersionBadge"
+                                            class="px-2 py-0.5 bg-primary/20 text-primary text-xs font-bold rounded-full border border-primary/30">v2.0</span>
+                                    </div>
+                                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: #9ca3af; opacity: 0.6; line-height: 1.625;">Bookmark the world, cherish every frame.</p>
+                                </div>
                             </div>
 
                             <div>
@@ -491,27 +499,23 @@
                                                 <td class="px-3 py-1.5">Pause / Play</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">U /
-                                                    Double Click
-                                                    OK</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">U / Double Click OK</td>
                                                 <td class="px-3 py-1.5">Favorite Video</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">J /
-                                                    Menu Key
-                                                </td>
-                                                <td class="px-2 py-1.5">Toggle Aspect Ratio</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">J / Menu Key</td>
+                                                <td class="px-3 py-1.5">Toggle Aspect Ratio</td>
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">M</td>
                                                 <td class="px-3 py-1.5">Toggle Mute</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">I</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">I / Tab 4</td>
                                                 <td class="px-3 py-1.5">Profile</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">E</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">E / Tab 1</td>
                                                 <td class="px-3 py-1.5">Toggle View</td>
                                             </tr>
                                             <tr>
@@ -519,7 +523,7 @@
                                                 <td class="px-3 py-1.5">Actor Works</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">R</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">R / Tab 2</td>
                                                 <td class="px-3 py-1.5">Sequential / Random</td>
                                             </tr>
                                             <tr>
@@ -527,10 +531,9 @@
                                                 <td class="px-3 py-1.5">Toggle Fullscreen</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">G</td>
+                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">G / Tab 3</td>
                                                 <td class="px-3 py-1.5">Select Library</td>
                                             </tr>
-
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">V</td>
                                                 <td class="px-3 py-1.5">Media Info</td>
@@ -550,19 +553,19 @@
                                 </ul>
                                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4">
                                     <a href="https://x.com/juneix_tse" target="_blank"
-                                        class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap">
+                                        class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 h-11 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap">
                                         <img src="https://cdn.simpleicons.org/x/white" class="w-3.5 h-3.5 mr-1.5"
                                             alt="X" /> Twitter • Follow</a>
                                     <a href="https://t.me/juneix_en" target="_blank"
-                                        class="flex items-center justify-center text-[#26A5E4] bg-[#26A5E4]/10 hover:bg-[#26A5E4]/20 px-3 py-1.5 rounded-full transition-colors border border-[#26A5E4]/20 text-[10px] whitespace-nowrap">
+                                        class="flex items-center justify-center text-[#26A5E4] bg-[#26A5E4]/10 hover:bg-[#26A5E4]/20 px-3 h-11 rounded-full transition-colors border border-[#26A5E4]/20 text-[10px] whitespace-nowrap">
                                         <img src="https://cdn.simpleicons.org/telegram/26A5E4"
                                             class="w-3.5 h-3.5 mr-1.5" alt="Telegram" /> Telegram • Channel</a>
                                     <a href="https://ko-fi.com/juneixtse" target="_blank"
-                                        class="flex items-center justify-center text-[#FF6433] bg-[#FF5E5B]/10 hover:bg-[#FF5E5B]/20 px-3 py-1.5 rounded-full transition-colors border border-[#FF5E5B]/20 text-[10px] whitespace-nowrap">
+                                        class="flex items-center justify-center text-[#FF6433] bg-[#FF5E5B]/10 hover:bg-[#FF5E5B]/20 px-3 h-11 rounded-full transition-colors border border-[#FF5E5B]/20 text-[10px] whitespace-nowrap">
                                         <img src="https://cdn.simpleicons.org/kofi/FF6433" class="w-3.5 h-3.5 mr-1.5"
                                             alt="Ko-fi" /> Ko-fi • Support</a>
                                     <a href="https://github.com/juneix/embyx" target="_blank"
-                                        class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap active:scale-95">
+                                        class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 h-11 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/github/white" class="w-3.5 h-3.5 mr-1.5"
                                             alt="GitHub" /> GitHub • Source</a>
                                 </div>
@@ -3500,7 +3503,8 @@
 
                         if (key === 'Enter' || keyCode === 13) {
                             if (document.activeElement && document.activeElement.classList.contains('focusable-item')) {
-                                if (document.activeElement.tagName.toLowerCase() === 'input' && document.activeElement.type !== 'checkbox') {
+                                const tagName = document.activeElement.tagName.toLowerCase();
+                                if (tagName === 'textarea' || (tagName === 'input' && document.activeElement.type !== 'checkbox')) {
                                     return;
                                 }
                                 e.preventDefault();
@@ -3589,9 +3593,30 @@
                                     this.showMediaInfo();
                                 }
                             }
-                            this.handleDoubleTap(window.innerWidth / 2, window.innerHeight / 2);
                         } else if (lowKey === 'm') {
                             this.dom.muteBtn.click();
+                        } else if (lowKey === 'u') {
+                            // Instant center heart burst (pure SVG + high performance CSS)
+                            const heart = document.createElement('div');
+                            heart.className = 'heart-anim absolute pointer-events-none z-50';
+                            heart.style.cssText = `left:calc(50% - 32px);top:calc(50% - 32px);--rot:${Math.floor(Math.random() * 40) - 20}deg`;
+                            heart.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="drop-shadow-xl"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
+                            document.getElementById('app').appendChild(heart);
+                            heart.addEventListener('animationend', () => heart.remove());
+
+                            const id = String(this.state.videos[this.state.currentIndex]?.Id);
+                            if (!this.state.favorites.has(id)) {
+                                this.toggleFavorite();
+                            }
+                            this.showInterfaceTemp();
+                        } else if (lowKey === 'h') {
+                            const playlistModal = document.getElementById('addToPlaylistModal');
+                            if (playlistModal && !playlistModal.classList.contains('hidden')) {
+                                this.toggleModal('addToPlaylistModal', false);
+                            } else {
+                                this.showAddToPlaylist();
+                                this.showInterfaceTemp();
+                            }
                         } else if (lowKey === 'y') {
                             // Y: toggle person filter - enter if person, exit if already filtering
                             if (this.state.isFilteredByPerson) {
@@ -3852,29 +3877,13 @@
             }
 
             async handleDoubleTap(x, y) {
+                // 1. Point animation DOM generation (pure SVG + high performance CSS)
                 const heart = document.createElement('div');
-                heart.innerHTML = '<i data-lucide="heart" class="fill-red-500 text-red-500 w-16 h-16 drop-shadow-xl"></i>';
-                heart.className = 'absolute pointer-events-none z-50 transform pointer-events-none transition-all duration-700 ease-out';
-
-                const rotation = Math.floor(Math.random() * 40) - 20;
-                heart.style.left = `${x - 32}px`;
-                heart.style.top = `${y - 32}px`;
-                heart.style.transform = `scale(0.5) rotate(${rotation}deg)`;
-                heart.style.opacity = '0';
-
+                heart.className = 'heart-anim absolute pointer-events-none z-50';
+                heart.style.cssText = `left:${x - 32}px;top:${y - 32}px;--rot:${Math.floor(Math.random() * 40) - 20}deg`;
+                heart.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="drop-shadow-xl"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
                 document.getElementById('app').appendChild(heart);
-                lucide.createIcons({ root: heart });
-
-                requestAnimationFrame(() => {
-                    heart.style.transform = `scale(1.2) rotate(${rotation}deg)`;
-                    heart.style.opacity = '1';
-
-                    setTimeout(() => {
-                        heart.style.transform = `scale(1) rotate(${rotation}deg) translateY(-100px)`;
-                        heart.style.opacity = '0';
-                        setTimeout(() => heart.remove(), 700);
-                    }, 200);
-                });
+                heart.addEventListener('animationend', () => heart.remove());
 
                 const currentVideo = this.state.videos[this.state.currentIndex];
                 if (currentVideo && !currentVideo.UserData?.IsFavorite) {
