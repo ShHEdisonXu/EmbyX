@@ -1,5 +1,5 @@
 <!--
-  EmbyX - 短视频风格 Emby 播放器
+  EmbyX - 图片画廊
   © 2026 谢週五 (https://juneix.github.io)
   著作权所有·设计与开发
 -->
@@ -21,16 +21,12 @@
     <link rel="icon" type="image/png" href="icon.png">
     <link rel="apple-touch-icon" href="icon.png">
 
-    <title>EmbyX - 画册模式</title>
+    <title>EmbyX - 画廊模式</title>
     <!-- CDN 优先，离线/CDN 故障时自动回退本地 lib/ 备份 -->
     <script src="https://cdn.tailwindcss.com" data-cfasync="false"
         onerror="this.onerror=null;var s=document.createElement('script');s.src='lib/tailwind.min.js';s.setAttribute('data-cfasync','false');document.head.appendChild(s)"></script>
     <script src="https://unpkg.com/lucide@1.21.0/dist/umd/lucide.min.js"
         onerror="this.onerror=null;var s=document.createElement('script');s.src='lib/lucide.min.js';document.head.appendChild(s)"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js" data-cfasync="false"
-        onerror="this.onerror=null;var s=document.createElement('script');s.src='lib/hls.min.js';s.setAttribute('data-cfasync','false');document.head.appendChild(s)"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@1.8.0/dist/mpegts.min.js"
-        onerror="this.onerror=null;var s=document.createElement('script');s.src='lib/mpegts.min.js';document.head.appendChild(s)"></script>
     <script data-cfasync="false">
         tailwind.config = {
             theme: {
@@ -48,12 +44,7 @@
     </script>
     <style type="text/tailwindcss">
         @layer utilities {
-            /* 视频全屏样式 - 移除硬编码的 object-cover 给 JS 控制 */
-            .video-fullscreen {
-                @apply w-full h-full absolute inset-0 z-10;
-            }
-            
-            /* 滑动容器 */
+            /* 画廊容器 */
             .slide-container {
 
                 @apply relative w-screen overflow-hidden bg-black;
@@ -65,9 +56,19 @@
                 }
             }
             
-            /* 单个视频卡片 */
+            /* 单张照片卡片 */
             .slide-item {
-                @apply absolute top-0 left-0 w-full h-full z-10 overflow-hidden;
+                @apply absolute top-0 left-0 w-full h-full overflow-hidden opacity-0 pointer-events-none;
+                transition: opacity 1100ms ease-in-out;
+                z-index: 10;
+            }
+            .slide-item.is-buffered {
+                @apply opacity-0;
+                z-index: 11;
+            }
+            .slide-item.is-active {
+                @apply opacity-100 pointer-events-auto;
+                z-index: 12;
             }
             
             /* 播放/暂停按钮动画 */
@@ -84,16 +85,17 @@
                 @apply text-2xl text-white;
             }
 
-            /* 连播模式/清屏模式逻辑 */
+            /* 轮播/清屏模式逻辑 */
             .interface-hidden .bottom-info,
             .interface-hidden .bottom-nav,
             .interface-hidden .right-toolbar,
+            .interface-hidden #bottomScrim,
             .interface-hidden #fullscreenBtn,
             .interface-hidden #deleteBtn {
                 @apply opacity-0 pointer-events-none transition-opacity duration-300;
             }
 
-            /* 格子视图下的特殊“清屏”：保留底部栏，隐藏播放器相关 UI */
+            /* 格子视图下的特殊“清屏”：保留底部栏，隐藏画廊浮层 UI */
             .grid-active .bottom-info,
             .grid-active .right-toolbar,
             .grid-active #fullscreenBtn,
@@ -113,10 +115,57 @@
             .profile-layer.active {
                 @apply translate-y-0;
             }
+            #videoTitle, #videoDescription {
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8), 0 0 1px rgba(0, 0, 0, 0.5) !important;
+            }
+            #videoDescriptionScroll::-webkit-scrollbar {
+                width: 4px;
+            }
+            #videoDescriptionScroll::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            #videoDescriptionScroll::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.25);
+                border-radius: 9999px;
+            }
+            #videoDescriptionScroll {
+                scrollbar-gutter: stable;
+            }
 
-            /* 进度条 */
-            .progress-line {
-                @apply h-full bg-white transition-[width] duration-[250ms] ease-linear;
+            .photo-motion {
+                animation-name: photoSlowZoom;
+                animation-duration: var(--photo-motion-duration, 30s);
+                animation-timing-function: ease-in-out;
+                animation-fill-mode: forwards;
+                animation-iteration-count: 1;
+                transform-origin: center;
+                will-change: transform;
+            }
+            .slideshow-paused .photo-motion {
+                animation-play-state: paused;
+            }
+            @keyframes photoSlowZoom {
+                0% { transform: scale(1); }
+                55% { transform: scale(1.10); }
+                100% { transform: scale(1.03); }
+            }
+            .magazine-pair {
+                @apply absolute inset-0 flex items-center justify-center bg-black;
+            }
+            .photo-frame {
+                @apply relative h-full overflow-hidden bg-black;
+            }
+            .magazine-pair.is-magazine {
+                @apply gap-1 px-1;
+            }
+            .magazine-pair.is-magazine .photo-frame {
+                width: calc(50% - 0.125rem);
+            }
+            .magazine-pair:not(.is-magazine) .photo-frame {
+                @apply w-full;
+            }
+            .magazine-pair:not(.is-magazine) .photo-frame-secondary {
+                @apply hidden;
             }
 
             /* MD3 & Liquid Glass: 底部导航反馈 */
@@ -141,13 +190,14 @@
                 filter: drop-shadow(0 0 6px rgba(82, 181, 75, 0.6));
             }
 
-            /* 彻底隐藏部分安卓 WebView/浏览器自带的巨大播放按钮 */
-            video::-webkit-media-controls-start-playback-button {
-                display: none !important;
-                -webkit-appearance: none;
-            }
-            video::-webkit-media-controls {
-                display: none !important;
+            @media (prefers-reduced-motion: reduce) {
+                .slide-item {
+                    transition-duration: 80ms;
+                }
+                .photo-motion {
+                    animation: none !important;
+                    transform: none !important;
+                }
             }
         }
     </style>
@@ -157,17 +207,6 @@
     <div id="app" class="slide-container">
 
         <div id="videoContainer" class="relative w-full h-full">
-        </div>
-
-        <div id="clickToPlayOverlay"
-            class="absolute inset-0 z-50 flex items-center justify-center bg-black/40 cursor-pointer"
-            style="display:none;">
-            <div class="text-center">
-                <div class="w-20 h-20 bg-black/50 rounded-full flex items-center justify-center animate-pulse mx-auto">
-                    <i data-lucide="play" class="text-white text-3xl"></i>
-                </div>
-                <p class="text-white text-lg mt-4 font-medium">点击开始播放</p>
-            </div>
         </div>
 
         <div
@@ -199,12 +238,6 @@
                 </div>
             </div>
 
-            <div class="flex flex-col items-center cursor-pointer active:scale-90 transition-transform" id="muteBtn">
-                <div class="w-12 h-12 flex items-center justify-center">
-                    <i data-lucide="volume-2" class="stroke-white w-6 h-6 drop-shadow-md"></i>
-                </div>
-            </div>
-
         </div>
 
         <!-- 左上角管理删除按钮，微调顶部距离，例如 1rem (16px) 或 10px -->
@@ -230,7 +263,7 @@
             <div
                 class="bg-black/50 rounded-2xl p-6 w-[85%] max-w-sm max-h-[80vh] overflow-y-auto border border-gray-700/50 shadow-2xl backdrop-blur-sm">
                 <h3 class="text-white text-lg font-bold mb-4 text-center">
-                    流媒体信息
+                    图片信息
                 </h3>
                 <div id="mediaInfoContent" class="text-sm text-gray-300">
                     <div class="flex justify-center py-4"><i data-lucide="loader-2"
@@ -238,25 +271,6 @@
                 </div>
                 <button id="closeMediaInfoBtn"
                     class="w-full mt-6 bg-gray-800/80 border border-gray-700/50 text-gray-200 py-2.5 rounded-lg font-medium hover:bg-gray-700 active:scale-95 transition-all">关闭</button>
-            </div>
-        </div>
-
-        <div id="syncConfirmModal"
-            class="fixed inset-0 z-[60] flex items-center justify-center bg-black/20 hidden backdrop-blur-sm transition-opacity duration-300">
-            <div
-                class="bg-black/50 rounded-2xl p-6 w-[85%] max-w-sm border border-gray-700/50 shadow-2xl backdrop-blur-sm text-center">
-                <div
-                    class="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-primary/20">
-                    <i data-lucide="refresh-cw" class="stroke-primary w-6 h-6"></i>
-                </div>
-                <h3 class="text-xl font-bold text-white mb-2">同步进度</h3>
-                <p id="syncFileName" class="text-gray-400 text-sm mb-6 leading-relaxed"></p>
-                <div class="flex space-x-3">
-                    <button id="cancelSyncBtn"
-                        class="flex-1 px-4 py-2.5 rounded-xl bg-gray-800 text-gray-300 font-medium active:scale-95 transition-all">忽略</button>
-                    <button id="confirmSyncBtn"
-                        class="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white font-medium active:scale-95 transition-all">同步</button>
-                </div>
             </div>
         </div>
 
@@ -282,28 +296,24 @@
             </div>
         </div>
 
+        <!-- 底部渐变黑影遮罩 (Scrim) -->
+        <div class="absolute bottom-0 left-0 right-0 h-[280px] bg-gradient-to-t from-black/60 via-black/20 to-transparent z-10 pointer-events-none transition-opacity duration-300" id="bottomScrim"></div>
+
         <div
-            class="bottom-info absolute bottom-4 left-4 right-4 z-30 transition-opacity duration-300 pointer-events-none">
-            <div class="mb-3 w-[85%] pr-4">
+            class="bottom-info absolute bottom-20 left-4 right-4 z-20 transition-opacity duration-300 pointer-events-none">
+            <div id="metaInfoContainer" class="mb-3 w-[85%] pr-4 pointer-events-auto transition-all duration-300">
                 <h3 id="videoTitle" class="text-white text-lg font-medium mb-1 drop-shadow-md truncate pointer-events-auto cursor-pointer hover:underline inline-block max-w-full">正在初始化...</h3>
-                <div id="videoDescriptionArea" class="pointer-events-auto cursor-pointer">
-                    <p id="videoDescription" class="text-gray-200 text-sm line-clamp-2 drop-shadow-md opacity-90 transition-all">
-                        请点击右下角“我的”进行服务器配置</p>
+                <div id="videoDescriptionArea" class="pointer-events-auto cursor-pointer transition-all duration-300">
+                    <div id="videoDescriptionScroll">
+                        <p id="videoDescription" class="text-gray-200 text-sm line-clamp-2 drop-shadow-md opacity-90 transition-all break-all whitespace-pre-wrap">请点击右下角“我的”进行服务器配置</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="relative h-1 bg-white/30 cursor-pointer pointer-events-auto mb-1 hidden" id="progressBarContainer">
-                <div id="progressLine" class="progress-line w-0"></div>
-            </div>
-
-            <div class="flex justify-between text-xs text-gray-300 drop-shadow hidden">
-                <span id="currentTime">00:00</span>
-                <span id="totalTime">00:00</span>
-            </div>
         </div>
 
         <div
-            class="bottom-nav absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm z-30 transition-opacity duration-300 pb-2 pt-1">
+            class="bottom-nav absolute bottom-0 left-0 right-0 bg-black/25 backdrop-blur-md border-t border-white/5 z-30 transition-opacity duration-300 pb-2 pt-1">
             <div class="flex justify-around items-center h-12">
                 <div id="viewModeBtn" class="nav-btn text-gray-400">
                     <i data-lucide="layout-grid" class="stroke-current w-5 h-5"></i>
@@ -346,30 +356,21 @@
                         </h2>
                         <div class="space-y-4 bg-gray-800/40 p-4 rounded-lg border border-gray-700/50">
                             <div>
-                                <label class="text-gray-400 text-xs block mb-1.5">服务器地址</label>
-                                <input type="text" id="configServer" placeholder="IP 或域名自动补全"
+                                <label class="text-gray-400 text-xs block mb-1.5">IP 或域名</label>
+                                <input type="text" id="configServer" placeholder="支持 Emby / Jellyfin / 飞牛影视"
                                     class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
                                     <label class="text-gray-400 text-xs block mb-1.5">用户名</label>
-                                    <input type="text" id="configUser" placeholder="Username"
+                                    <input type="text" id="configUser" placeholder="一键三连"
                                         class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
                                 </div>
                                 <div>
                                     <label class="text-gray-400 text-xs block mb-1.5">密码</label>
-                                    <input type="password" id="configPwd" placeholder="Password"
+                                    <input type="password" id="configPwd" placeholder="打赏鼓励"
                                         class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
                                 </div>
-                            </div>
-                            <div id="rowStatic" tabindex="0"
-                                class="focusable-item flex items-center justify-between py-2.5 px-3 bg-gray-900/40 rounded-lg border border-transparent hover:bg-gray-800/60 transition-all cursor-pointer group"
-                                onclick="document.getElementById('configStatic').click();">
-                                <label for="configStatic"
-                                    class="text-gray-300 text-sm cursor-pointer flex-1">直接播放（不转码）</label>
-                                <input type="checkbox" id="configStatic"
-                                    class="rounded text-primary bg-gray-700 border-none w-4 h-4 pointer-events-none"
-                                    checked>
                             </div>
                             <div id="rowAutoplay" tabindex="0"
                                 class="focusable-item flex items-center justify-between py-2.5 px-3 bg-gray-900/40 rounded-lg border border-transparent hover:bg-gray-800/60 transition-all cursor-pointer group"
@@ -380,20 +381,19 @@
                                     class="rounded text-primary bg-gray-700 border-none w-4 h-4 pointer-events-none"
                                     checked>
                             </div>
-                            <div id="rowShortDrama" tabindex="0"
-                                class="focusable-item flex items-center justify-between py-2.5 px-3 bg-gray-900/40 rounded-lg border border-transparent hover:bg-gray-800/60 transition-all cursor-pointer group"
-                                onclick="document.getElementById('configShortDrama').click();">
-                                <label for="configShortDrama" class="text-gray-300 text-sm cursor-pointer flex-1">短剧模式
-                                </label>
-                                <input type="checkbox" id="configShortDrama"
-                                    class="rounded text-primary bg-gray-700 border-none w-4 h-4 pointer-events-none">
+                            <div id="rowSlideshowInterval" tabindex="0"
+                                class="focusable-item flex items-center justify-between gap-3 py-2.5 px-3 bg-gray-900/40 rounded-lg border border-transparent hover:bg-gray-800/60 transition-all group">
+                                <label for="configSlideshowInterval"
+                                    class="text-gray-300 text-sm cursor-pointer flex-1">轮播间隔（秒）</label>
+                                <input type="number" id="configSlideshowInterval" min="5" max="3600" step="1" value="30"
+                                    class="w-24 h-9 bg-gray-950 text-white text-sm text-center rounded px-2 outline-none border border-gray-700 focus:border-primary transition-colors">
                             </div>
-                            <div id="rowLiveAutoplay" tabindex="0"
+                            <div id="rowMagazineMode" tabindex="0"
                                 class="focusable-item flex items-center justify-between py-2.5 px-3 bg-gray-900/40 rounded-lg border border-transparent hover:bg-gray-800/60 transition-all cursor-pointer group"
-                                onclick="document.getElementById('configLiveAutoplay').click();">
-                                <label for="configLiveAutoplay" class="text-gray-300 text-sm cursor-pointer flex-1">自动播放 Live Photo
+                                onclick="document.getElementById('configMagazineMode').click();">
+                                <label for="configMagazineMode" class="text-gray-300 text-sm cursor-pointer flex-1">杂志模式
                                 </label>
-                                <input type="checkbox" id="configLiveAutoplay"
+                                <input type="checkbox" id="configMagazineMode"
                                     class="rounded text-primary bg-gray-700 border-none w-4 h-4 pointer-events-none">
                             </div>
                             <div id="rowDeleteMode" tabindex="0"
@@ -424,79 +424,43 @@
                         </h2>
                         <div
                             class="bg-gray-800/40 p-5 rounded-xl border border-gray-700/50 space-y-5 text-sm text-gray-300 leading-relaxed">
-                            <div class="flex items-center">
-                                <h3 class="text-white font-bold text-2xl tracking-tight">📱 EmbyX</h3>
-                                <span id="appVersionBadge"
-                                    class="ml-2 px-2 py-0.5 bg-primary/20 text-primary text-xs font-bold rounded-full border border-primary/30">v2.0</span>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="display: flex; height: 64px; width: 64px; align-items: center; justify-content: center; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); overflow: hidden; flex-shrink: 0;">
+                                    <img src="icon.png" style="height: 80%; width: 80%; object-fit: cover;">
+                                </div>
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <h3 class="text-white font-bold text-2xl tracking-tight">EmbyX</h3>
+                                        <span id="appVersionBadge"
+                                            class="px-2 py-0.5 bg-primary/20 text-primary text-xs font-bold rounded-full border border-primary/30">v2.0</span>
+                                    </div>
+                                    <p style="margin: 4px 0 0 0; font-size: 0.75rem; color: #9ca3af; opacity: 0.6; line-height: 1.625;">藏尽世间美，光影皆留情。</p>
+                                </div>
                             </div>
 
                             <div>
                                 <p class="text-gray-300">👋 Hi～我叫<a href="https://juneix.github.io" target="_blank"
-                                        class="text-primary hover:underline">@谢週五</a>，EmbyX 是一款专为 Emby / Jellyfin（兼容飞牛影视🔥）打造的
-                                    Web 原生应用，完美复刻抖音·短视频沉浸式交互，让你的私人媒体库焕发全新的刷片体验。🎉</p>
+                                        class="text-primary hover:underline">@谢週五</a>，<b>EmbyX</b> 是一款专为 Emby / Jellyfin（兼容飞牛影视🔥）打造的
+                                    Web 原生应用，pic 画廊模式专注照片浏览，让你的私人图片库拥有沉浸式翻阅体验。🎉</p>
                             </div>
 
                             <div
                                 class="text-yellow-500/90 text-xs bg-yellow-500/10 p-3 rounded-lg border border-yellow-500/20">
                                 <i data-lucide="shield-check" class="w-3 h-3 mr-1 inline"></i>
-                                数据全程保存在本地，完全免费。
-                            </div>
-
-                            <div>
-                                <h4 class="text-gray-300 flex items-center">
-                                    🔮 播放性能
-                                    <a href="./info.html"
-                                        class="ml-2 text-gray-500 hover:text-primary transition-colors active:scale-95"
-                                        title="检测播放能力">
-                                        <i data-lucide="cpu" class="w-4 h-4"></i>
-                                    </a>
-                                </h4>
-                                <ul class="list-disc list-inside space-y-1 text-gray-400 text-xs mt-2">
-                                    <li>原生 HTML5 播放器，新设备体验最佳</li>
-                                    <li>老设备需服务器转码，<del>不如放到**上回收(没打钱</del> 😂</li>
-                                </ul>
-                                <div class="bg-black/40 rounded-lg overflow-hidden border border-gray-700/50 mt-3">
-                                    <table class="w-full text-center text-[11px] leading-tight border-collapse">
-                                        <thead class="bg-gray-700/30 text-gray-400">
-                                            <tr>
-                                                <th class="px-2 py-1.5 border-r border-gray-700/50 font-medium">设备</th>
-                                                <th class="px-2 py-1.5 border-r border-gray-700/50 font-medium">HEVC 硬解
-                                                </th>
-                                                <th class="px-2 py-1.5 font-medium">AV1 硬解</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-gray-700/50 text-gray-400">
-                                            <tr>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50 text-primary">
-                                                    苹果</td>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50">A9 (2015) / M1</td>
-                                                <td class="px-2 py-1.5">A17 Pro (2023) / M3</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50 text-primary">
-                                                    安卓</td>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50">千元机 (2016)</td>
-                                                <td class="px-2 py-1.5">千元机 (2024)</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50 text-primary">
-                                                    PC</td>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50">6～8 代酷睿·核显</td>
-                                                <td class="px-2 py-1.5">11 代酷睿·核显</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                数据全程保存在本地，免费开源。
                             </div>
 
                             <div>
                                 <h4 class="text-gray-300">🧩 使用技巧</h4>
-                                <ul class="list-disc list-inside space-y-1 text-gray-400 text-xs mt-2">
-                                    <li>入库更快：媒体库类型选「家庭视频」</li>
-                                    <li>加载更顺：每个媒体库 < 1000 个视频</li>
-                                    <li>管理更爽：使用多个媒体库和播放列表</li>
-                                    <li>进度更稳：拖动带加速度，可双击侧边</li>
-                                    <li>PWA 应用：添加到主屏幕/作为应用安装</li>
+                                <ul class="space-y-2 text-gray-400 text-xs mt-2 mb-3">
+                                    <li class="flex items-center">
+                                        <span class="text-primary mr-1.5">📚</span>
+                                        完整使用教程：<a href="https://5nav.eu.org" target="_blank" class="text-primary hover:underline">谢週五の藏经阁</a>
+                                    </li>
+                                    <li class="flex items-center">
+                                        <span class="text-primary mr-1.5">🖼️</span>
+                                        pic 画廊只读取普通图片，动态照片等非图片项目会被自动屏蔽。
+                                    </li>
                                 </ul>
                             </div>
 
@@ -514,22 +478,22 @@
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">W / S /
                                                     ↑ / ↓</td>
-                                                <td class="px-3 py-1.5">上一个 / 下一个视频</td>
+                                                <td class="px-3 py-1.5">打开媒体源</td>
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">A / D /
                                                     ← / →</td>
-                                                <td class="px-3 py-1.5">快退 / 快进 15 秒</td>
+                                                <td class="px-3 py-1.5">上一张 / 下一张照片</td>
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">Space /
                                                     单击 OK</td>
-                                                <td class="px-3 py-1.5">暂停 / 播放</td>
+                                                <td class="px-3 py-1.5">显示 / 隐藏界面</td>
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">U / 双击
                                                     OK</td>
-                                                <td class="px-3 py-1.5">收藏视频</td>
+                                                <td class="px-3 py-1.5">收藏照片</td>
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">J / 菜单键
@@ -550,7 +514,7 @@
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">Y</td>
-                                                <td class="px-3 py-1.5">演员作品</td>
+                                                <td class="px-3 py-1.5">人物作品</td>
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">R / Tab 2</td>
@@ -567,7 +531,7 @@
 
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">V</td>
-                                                <td class="px-3 py-1.5">流媒体详情</td>
+                                                <td class="px-3 py-1.5">图片详情</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -582,35 +546,33 @@
                                     <a href="https://space.bilibili.com/765334" target="_blank"
                                         class="flex items-center justify-center text-[#FB7299] bg-[#FB7299]/10 hover:bg-[#FB7299]/20 px-3 h-11 rounded-full transition-colors border border-[#FB7299]/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/bilibili/FB7299"
-                                            class="w-3.5 h-3.5 mr-1.5" alt="Bilibili" /> B 站·教程</a>
+                                            class="w-3.5 h-3.5 mr-1.5" alt="Bilibili" /> B 站 · 教程</a>
                                     <a href="https://xhslink.com/m/7JytoZm2Rpl" target="_blank"
                                         class="flex items-center justify-center text-[#FF2442] bg-[#FF2442]/10 hover:bg-[#FF2442]/20 px-3 h-11 rounded-full transition-colors border border-[#FF2442]/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/xiaohongshu/FF2442"
-                                            class="w-3.5 h-3.5 mr-1.5" alt="Xiaohongshu" /> 小红书·攻略</a>
+                                            class="w-3.5 h-3.5 mr-1.5" alt="Xiaohongshu" /> 小红书 · 攻略</a>
                                     <a href="https://qm.qq.com/q/KhRMpYLnGi" target="_blank"
                                         class="flex items-center justify-center text-[#12B7F5] bg-[#12B7F5]/10 hover:bg-[#12B7F5]/20 px-3 h-11 rounded-full transition-colors border border-[#12B7F5]/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/qq/12B7F5" class="w-3.5 h-3.5 mr-1.5"
-                                            alt="QQ" /> QQ 群·催更</a>
-                                    <a href="https://github.com/juneix/embyx" target="_blank"
+                                            alt="QQ" /> QQ 群 · 催更</a>
+                                    <a href="https://github.com/juneix/EmbyX/blob/main/README_zh.md" target="_blank"
                                         class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 h-11 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/github/white" class="w-3.5 h-3.5 mr-1.5"
-                                            alt="GitHub" /> GitHub · 开源</a>
+                                            alt="GitHub" /> GitHub · 加星</a>
                                 </div>
-                                <!-- 打赏区 -->
-                                <p class="text-gray-400 text-xs mt-4 mb-2">☕ 打赏鼓励，支持我开发更多有趣应用～</p>
-                                <div class="flex justify-center space-x-3">
-                                    <a href="weixin://profile/gh_86f7c0a73738">
-                                        <div class="flex flex-col items-center">
-                                            <img src="wechat.webp" alt="微信" class="w-24 h-24 object-cover rounded">
-                                            <span class="text-[10px] text-gray-400 mt-1">微信</span>
-                                        </div>
+                            </div>
+
+                            <!-- 打赏区 -->
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-6 text-center mt-4">
+                                <p class="text-gray-400 text-xs font-medium mb-4">☕ 打赏鼓励，支持我开发更多有趣应用～</p>
+                                <div class="flex justify-center gap-6">
+                                    <a href="weixin://profile/gh_86f7c0a73738" class="flex flex-col items-center gap-2 flex-1 min-w-0">
+                                        <img src="wechat.webp" alt="微信" class="w-full max-w-[160px] aspect-square rounded-xl object-cover border border-white/10">
+                                        <span class="text-[10px] text-gray-400/60">微信</span>
                                     </a>
-                                    <a
-                                        href="alipays://platformapi/startapp?saId=10000007&clientVersion=3.7.0.0718&qrcode=https%3A%2F%2Fqr.alipay.com%2Ffkx15248wilbz2ddz96og40">
-                                        <div class="flex flex-col items-center">
-                                            <img src="alipay.webp" alt="支付宝" class="w-24 h-24 object-cover rounded">
-                                            <span class="text-[10px] text-gray-400 mt-1">支付宝</span>
-                                        </div>
+                                    <a href="alipays://platformapi/startapp?saId=10000007&clientVersion=3.7.0.0718&qrcode=https%3A%2F%2Fqr.alipay.com%2Ffkx15248wilbz2ddz96og40" class="flex flex-col items-center gap-2 flex-1 min-w-0">
+                                        <img src="alipay.webp" alt="支付宝" class="w-full max-w-[160px] aspect-square rounded-xl object-cover border border-white/10">
+                                        <span class="text-[10px] text-gray-400/60">支付宝</span>
                                     </a>
                                 </div>
                             </div>
@@ -688,12 +650,11 @@
 
         class EmbyApp {
             constructor() {
-                this._isFirstLoad = true; // 启动加载锁，防时间戳自污染
                 // 应用状态
                 this.state = {
                     videos: [],
                     currentIndex: 0,
-                    isPlaying: false,
+                    isSlideshowPaused: false,
                     favorites: new Set(),
                     playMode: 'sequence',
                     viewMode: 'stream',
@@ -701,12 +662,7 @@
                     currentTab: 'home',
                     currentLibraryId: null,
                     isScaleFill: true,
-                    isMuted: false,
-                    lastReportTime: 0,
-                    playSessionId: null,
-                    playbackMethod: 'DirectPlay',
                     originalVideos: [],  // 随机模式下保存原始顺序列表
-                    _capabilitiesReported: false,
                     _hitokotoCache: null,
                     currentPerson: null,
                     isFilteredByPerson: false,
@@ -720,9 +676,13 @@
                     isFilteredByTag: false
                 };
 
-                this.config = { server: '', user: '', token: '', userId: '', useStatic: true, autoplay: true, shortDrama: false, deleteMode: false, fnOS: false };
+                this.config = { server: '', user: '', token: '', userId: '', autoplay: true, slideshowInterval: 30, magazineMode: false, deleteMode: false, fnOS: false };
 
                 this.csTimer = null;
+                this.slideshowTimer = null;
+                this.playFeedbackTimer = null;
+                this.photoMetadataCache = new Map();
+                this.photoMetadataControllers = new Map();
 
 
                 this.dom = {}; // DOM 元素缓存
@@ -759,7 +719,7 @@
             // 检查当前是否有任何弹窗/面板处于打开状态
             // 这种状态下不应触发自动清屏
             isAnyModalOpen() {
-                const modals = ['mediaInfoModal', 'deleteConfirmModal', 'syncConfirmModal', 'profilePage', 'libraryModal', 'addToPlaylistModal'];
+                const modals = ['mediaInfoModal', 'deleteConfirmModal', 'profilePage', 'libraryModal', 'addToPlaylistModal'];
                 return modals.some(id => {
                     const el = document.getElementById(id);
                     if (!el) return false;
@@ -785,11 +745,6 @@
                 this.state.isAutoplay = this.config.autoplay !== false;
 
                 // 根据持久化状态同步 UI 图标
-                if (this.dom.muteBtn) {
-                    const iconName = this.state.isMuted ? 'volume-x' : 'volume-2';
-                    const iconColor = this.state.isMuted ? 'text-secondary' : 'stroke-white';
-                    this.dom.muteBtn.innerHTML = `<div class="w-12 h-12 flex items-center justify-center"><i data-lucide="${iconName}" class="${iconColor} w-6 h-6 drop-shadow-md"></i></div>`;
-                }
                 if (this.dom.scaleBtn) {
                     this.dom.scaleBtn.innerHTML = `<div class="w-12 h-12 flex items-center justify-center"><i data-lucide="${this.state.isScaleFill ? 'maximize-2' : 'minimize-2'}" class="stroke-white w-6 h-6 drop-shadow-md"></i></div>`;
                 }
@@ -875,30 +830,49 @@
 
             cacheDOM() {
                 const ids = [
-                    'videoContainer', 'clickToPlayOverlay', 'loading', 'toast',
-                    'videoDescriptionArea', 'videoTitle', 'videoDescription', 'progressLine', 'currentTime', 'totalTime',
+                    'videoContainer', 'loading', 'toast',
+                    'metaInfoContainer', 'videoTitle', 'videoDescriptionArea', 'videoDescriptionScroll', 'videoDescription',
                     'playModeBtn', 'viewModeBtn', 'libraryBtn', 'myBtn',
-                    'favoriteBtn', 'addToPlaylistBtn', 'scaleBtn', 'muteBtn', 'fullscreenBtn', 'deleteBtn',
+                    'favoriteBtn', 'addToPlaylistBtn', 'scaleBtn', 'fullscreenBtn', 'deleteBtn',
                     'mediaInfoModal', 'mediaInfoContent', 'closeMediaInfoBtn',
                     'deleteConfirmModal', 'confirmDeleteBtn', 'cancelDeleteBtn', 'deleteFileName',
-                    'syncConfirmModal', 'confirmSyncBtn', 'cancelSyncBtn', 'syncFileName',
-                    'configServer', 'configUser', 'configPwd', 'configStatic', 'configAutoplay', 'configShortDrama', 'configDeleteMode', 'configLiveAutoplay'
+                    'configServer', 'configUser', 'configPwd', 'configAutoplay', 'configSlideshowInterval', 'configMagazineMode', 'configDeleteMode'
                 ];
                 ids.forEach(id => this.dom[id] = document.getElementById(id));
                 this.dom.rightToolbar = document.querySelector('.right-toolbar');
             }
 
             // --- 配置与数据管理 ---
+            clampSlideshowInterval(value) {
+                const parsed = parseInt(value, 10);
+                if (!Number.isFinite(parsed)) return 30;
+                return Math.min(3600, Math.max(5, parsed));
+            }
+
+            getMediaBasename(item) {
+                const raw = item?.Path || item?.Name || '';
+                let name = String(raw).split(/[\\/]/).pop() || String(raw);
+                try { name = decodeURIComponent(name); } catch (e) { }
+                return name.split(/[?#]/)[0].trim();
+            }
+
+            isPosterLikePhoto(item) {
+                return this.getMediaBasename(item).toLowerCase().includes('poster');
+            }
+
+            filterDisplayPhotos(items) {
+                return (items || []).filter(item => !this.isPosterLikePhoto(item));
+            }
+
             loadConfig() {
                 this.config.server = localStorage.getItem('emby_server') || '';
                 this.config.user = localStorage.getItem('emby_user') || '';
                 this.config.token = localStorage.getItem('emby_token') || '';
                 this.config.userId = localStorage.getItem('emby_uid') || '';
-                this.config.useStatic = localStorage.getItem('emby_static') !== 'false';
                 this.config.autoplay = localStorage.getItem('emby_autoplay') !== 'false';
-                this.config.shortDrama = localStorage.getItem('emby_shortdrama') === 'true';
+                this.config.slideshowInterval = this.clampSlideshowInterval(localStorage.getItem('emby_pic_slideshow_interval') || '30');
+                this.config.magazineMode = localStorage.getItem('emby_pic_magazine_mode') === 'true';
                 this.config.deleteMode = localStorage.getItem('emby_delete_mode') === 'true';
-                this.config.liveAutoplay = localStorage.getItem('emby_live_autoplay') !== 'false';
                 this.config.fnOS = localStorage.getItem('emby_fnOS') === 'true';
 
                 // 生成或读取设备唯一 ID，解决多设备识别冲突问题
@@ -912,12 +886,8 @@
                 const savedScale = localStorage.getItem('emby_is_scale_fill');
                 if (savedScale !== null) this.state.isScaleFill = savedScale === 'true';
 
-                const savedMute = localStorage.getItem('emby_is_muted');
-                if (savedMute !== null) this.state.isMuted = savedMute === 'true';
-
                 const savedPlayMode = localStorage.getItem('emby_play_mode');
                 if (savedPlayMode !== null) this.state.playMode = savedPlayMode;
-                if (this.config.shortDrama) this.state.playMode = 'sequence';
 
                 const savedLibId = localStorage.getItem('emby_lib_id');
                 const savedLibType = localStorage.getItem('emby_lib_type');
@@ -937,11 +907,10 @@
                     const pwdLen = parseInt(localStorage.getItem('emby_pwd_len') || '0');
                     this.dom.configPwd.value = pwdLen > 0 ? '*'.repeat(pwdLen) : '';
                 }
-                if (this.dom.configStatic) this.dom.configStatic.checked = this.config.useStatic;
                 if (this.dom.configAutoplay) this.dom.configAutoplay.checked = this.config.autoplay;
-                if (this.dom.configShortDrama) this.dom.configShortDrama.checked = this.config.shortDrama;
+                if (this.dom.configSlideshowInterval) this.dom.configSlideshowInterval.value = this.config.slideshowInterval;
+                if (this.dom.configMagazineMode) this.dom.configMagazineMode.checked = this.config.magazineMode;
                 if (this.dom.configDeleteMode) this.dom.configDeleteMode.checked = this.config.deleteMode;
-                if (this.dom.configLiveAutoplay) this.dom.configLiveAutoplay.checked = this.config.liveAutoplay;
 
                 // 基于配置同步UI
                 this.dom.deleteBtn.style.display = this.config.deleteMode ? 'flex' : 'none';
@@ -975,11 +944,11 @@
                 const user = this.dom.configUser.value.trim();
                 const pwd = this.dom.configPwd.value.trim();
 
-                const isStatic = this.dom.configStatic.checked;
                 const autoplay = this.dom.configAutoplay.checked;
-                const shortDrama = this.dom.configShortDrama.checked;
+                const slideshowInterval = this.clampSlideshowInterval(this.dom.configSlideshowInterval.value);
+                const magazineMode = this.dom.configMagazineMode.checked;
                 const deleteMode = this.dom.configDeleteMode.checked;
-                const liveAutoplay = this.dom.configLiveAutoplay ? this.dom.configLiveAutoplay.checked : true;
+                if (this.dom.configSlideshowInterval) this.dom.configSlideshowInterval.value = slideshowInterval;
 
                 if (!server || !user) return this.showToast('请填写完整信息');
 
@@ -1005,7 +974,7 @@
 
                 // 封装登录验证流程（8096: Emby/Jellyfin 标准端口, 8090: 飞牛影视端口）
                 const performAuth = async (targetServer) => {
-                    // 探测飞牛影视 /v 接口，命中则走专用播放链
+                    // 探测飞牛影视 /v 接口，保留服务器兼容状态
                     const fnOS = await this.detectFnOS(targetServer);
 
                     // Jellyfin 登录前置探测：标准路径无 /emby/ 前缀，兼容路径作为回退
@@ -1053,11 +1022,10 @@
                     if (isUnchangedPwd && this.config.token && this.config.server === server && this.config.user === user) {
                         // 服务器未变，fnOS 状态沿用内存值，无需重新发探测请求
                         const fnOS = this.config.fnOS;
-                        localStorage.setItem('emby_static', isStatic);
                         localStorage.setItem('emby_autoplay', autoplay);
-                        localStorage.setItem('emby_shortdrama', shortDrama);
+                        localStorage.setItem('emby_pic_slideshow_interval', slideshowInterval);
+                        localStorage.setItem('emby_pic_magazine_mode', magazineMode);
                         localStorage.setItem('emby_delete_mode', deleteMode);
-                        localStorage.setItem('emby_live_autoplay', liveAutoplay);
                         if (fnOS) localStorage.setItem('emby_fnOS', 'true');
                         else localStorage.removeItem('emby_fnOS');
 
@@ -1102,15 +1070,14 @@
                     localStorage.setItem('emby_user', user);
                     localStorage.setItem('emby_token', data.AccessToken);
                     localStorage.setItem('emby_uid', data.SessionInfo.UserId);
-                    localStorage.setItem('emby_static', isStatic);
                     localStorage.setItem('emby_autoplay', autoplay);
-                    localStorage.setItem('emby_shortdrama', shortDrama);
+                    localStorage.setItem('emby_pic_slideshow_interval', slideshowInterval);
+                    localStorage.setItem('emby_pic_magazine_mode', magazineMode);
                     localStorage.setItem('emby_delete_mode', deleteMode);
-                    localStorage.setItem('emby_live_autoplay', liveAutoplay);
                     if (fnOS) localStorage.setItem('emby_fnOS', 'true');
                     else localStorage.removeItem('emby_fnOS');
 
-                    this.config = { ...this.config, server, user, token: data.AccessToken, userId: data.SessionInfo.UserId, useStatic: isStatic, autoplay, shortDrama, deleteMode, fnOS };
+                    this.config = { ...this.config, server, user, token: data.AccessToken, userId: data.SessionInfo.UserId, autoplay, slideshowInterval, magazineMode, deleteMode, fnOS };
 
                     // 将密码位数存入 localStorage，不存密码本身，空密码记为 0
                     const pwdLen2 = pwd.length;
@@ -1225,7 +1192,7 @@
                 } catch(e) {}
             }
 
-            // --- 核心播放逻辑 ---
+            // --- 核心照片加载逻辑 ---
             async fetchVideos(parentId = null, ids = null, isLoadMore = false, isRandom = false, isAppend = false, searchTerm = '') {
                 this.toggleLoading(!isAppend); // 追加时不显示全屏 loading
                 try {
@@ -1242,7 +1209,7 @@
                     const libraryId = parentId || this.state.currentLibraryId;
 
                     // --- 分页参数 ---
-                    // PAGE_SIZE: 每页视频数，150 为体验甜点值
+                    // PAGE_SIZE: 每页图片数，150 为体验甜点值
                     const PAGE_SIZE = 150;
 
                     let fetchStartIndex = this.state.startIndex || 0;
@@ -1250,25 +1217,30 @@
                         fetchStartIndex += this.state.videos.length;
                     }
 
-                    let url = `${server}/emby/Users/${userId}/Items?api_key=${token}&Recursive=true&IncludeItemTypes=Photo,PhotoAlbum,Video&Limit=${PAGE_SIZE}&StartIndex=${fetchStartIndex}&Fields=Overview,Path,RunTimeTicks,MediaSources,Tags,TagItems`;
+                    let url = `${server}/emby/Users/${userId}/Items?api_key=${token}&Recursive=true&IncludeItemTypes=Photo&Limit=${PAGE_SIZE}&StartIndex=${fetchStartIndex}&Fields=Overview,Path,RunTimeTicks,MediaSources,Tags,TagItems`;
 
                     if (searchTerm) {
-                        const sortStr = this.config.shortDrama ? 'SortBy=Path&SortOrder=Ascending' : 'SortBy=DateCreated&SortOrder=Descending';
+                        const sortStr = 'SortBy=DateCreated&SortOrder=Descending';
                         url += `&SearchTerm=${encodeURIComponent(searchTerm)}&${sortStr}`;
                     } else if (this.state.currentTag) {
-                        const sortStr = this.config.shortDrama ? 'SortBy=Path&SortOrder=Ascending' : 'SortBy=DateCreated&SortOrder=Descending';
+                        const sortStr = 'SortBy=DateCreated&SortOrder=Descending';
                         url += `&Tags=${encodeURIComponent(this.state.currentTag)}&${sortStr}`;
                     } else if (this.state.currentPerson) {
                         url += `&Person=${encodeURIComponent(this.state.currentPerson)}`;
                     } else if (ids) {
+                        url += `&Ids=${ids}`;
+                        if (libraryId === 'favorites') url += `&Filters=IsFavorite`;
+                    } else if (isRandom) {
+                        url += `&SortBy=Random`;
+                        if (libraryId && libraryId !== 'favorites') url += `&ParentId=${libraryId}`;
                         if (libraryId === 'favorites') url += `&Filters=IsFavorite`;
                     } else if (libraryId === 'favorites') {
                         url += `&SortBy=DateCreated&SortOrder=Descending&Filters=IsFavorite`;
                     } else if (libraryId) {
-                        const sortStr = this.config.shortDrama ? 'SortBy=Path&SortOrder=Ascending' : 'SortBy=DateCreated&SortOrder=Descending';
+                        const sortStr = 'SortBy=DateCreated&SortOrder=Descending';
                         url += `&${sortStr}&ParentId=${libraryId}`;
                     } else {
-                        const sortStr = this.config.shortDrama ? 'SortBy=Path&SortOrder=Ascending' : 'SortBy=DateCreated&SortOrder=Descending';
+                        const sortStr = 'SortBy=DateCreated&SortOrder=Descending';
                         url += `&${sortStr}`;
                     }
 
@@ -1281,7 +1253,7 @@
                         throw new Error(`服务器错误: ${res.status}`);
                     }
                     let data = await res.json();
-                    const items = data.Items || [];
+                    const items = this.filterDisplayPhotos(data.Items || []);
 
                     if (isAppend) {
                         if (items.length > 0) {
@@ -1290,13 +1262,13 @@
                                 this.state.originalVideos.push(...items);
                             }
                         } else {
-                            if (!isAppend) this.showToast('没有更多视频了');
+                            if (!isAppend) this.showToast('没有更多照片了');
                         }
                         return;
                     }
 
                     if (isLoadMore && items.length === 0) {
-                        this.showToast('没有更多视频了');
+                        this.showToast('没有更多照片了');
                         this.state.startIndex = Math.max(0, (this.state.startIndex || 0));
                         this.toggleLoading(false);
                         return;
@@ -1311,21 +1283,10 @@
                     }
 
                     if (items.length === 0) {
-                        this.showToast('没有找到视频');
+                        this.showToast('没有找到照片');
                     }
 
-                    // 短剧模式：尝试从本地恢复进度
-                    if (this.config.shortDrama && items.length > 0 && this.state.currentLibraryId) {
-                        const lastId = localStorage.getItem(`emby_last_id_${this.state.currentLibraryId}`);
-                        if (lastId) {
-                            const savedIndex = this.state.videos.findIndex(v => v.Id === lastId);
-                            if (savedIndex !== -1) {
-                                this.state.currentIndex = savedIndex;
-                            }
-                        }
-                    }
-
-                    // 随机模式下加载完，直接原地洗牌（保持第一个视频在首位）
+                    // 随机模式下加载完，直接原地洗牌（保持第一张照片在首位）
                     if (this.state.playMode === 'random' && items.length > 0) {
                         this.state.originalVideos = [...this.state.videos];
                         this._shuffleAroundCurrent();
@@ -1336,16 +1297,13 @@
                     } else {
                         if (items.length > 0) {
                             this.renderSlides();
-                            this.loadVideo(this.state.currentIndex);
-                            if (this.config.shortDrama) {
-                                setTimeout(() => this.checkCloudSync(), 1500);
-                            }
+                            this.loadPhoto(this.state.currentIndex);
                         } else {
                             this.renderGridView(); // 瀑布流播放模式下无搜索结果时，退回网格视图展示 0 统计
                         }
                     }
                 } catch (e) {
-                    console.error('获取视频失败:', e);
+                    console.error('获取照片失败:', e);
                     this.showToast('无法连接服务器: ' + (e.message || '未知错误'));
                 } finally {
                     this.toggleLoading(false);
@@ -1355,14 +1313,9 @@
             renderSlides() {
 
                 this.dom.videoContainer.innerHTML = '';
-                this.dom.videoContainer.className = 'relative w-full h-full transition-transform duration-300 ease-out';
-                // 暂时剥夺动画权限，执行无缝硬切瞬移
-                this.dom.videoContainer.style.transition = 'none';
-                this.dom.videoContainer.style.transform = `translateX(-${this.state.currentIndex * 100}%)`;
-                // 强制浏览器重绘，应用上面的瞬移坐标
-                void this.dom.videoContainer.offsetHeight;
-                // 复原过渡动画，供后续手指上下滑动使用
+                this.dom.videoContainer.className = 'relative w-full h-full overflow-hidden bg-black';
                 this.dom.videoContainer.style.transition = '';
+                this.dom.videoContainer.style.transform = 'none';
 
                 // 只初始化 3 个物理槽位
                 for (let i = 0; i < 3; i++) {
@@ -1372,21 +1325,19 @@
                     el.style.display = 'none';
                     el.innerHTML = `
                         <div class="w-full h-full relative bg-black">
-                            <!-- 封面缩略图：缩放填充模式同步视频（cover 或 contain），始终可见以作为视频加载前的清晰占位 -->
-                            <img id="thumb-${i}" class="absolute inset-0 w-full h-full z-0 transition-opacity duration-300 ${this.state.isScaleFill ? 'object-cover' : 'object-contain'}" src="" alt="" />
-                            <!-- 高斯模糊背景（contain 模式下可见，cover 模式下透明）。使用 scale-[1.15] 避免模糊边缘向内渐隐导致光晕/暗角特效 -->
-                            <div id="poster-${i}" class="absolute inset-0 bg-cover bg-center scale-[1.15] blur-xl transition-opacity duration-300 z-0 ${this.state.isScaleFill ? 'opacity-0' : 'opacity-70'}"></div>
-                            <div id="overlay-${i}" class="absolute inset-0 bg-black/40 transition-opacity duration-300 z-0 ${this.state.isScaleFill ? 'opacity-0' : 'opacity-100'}"></div>
-                            
-                            <!-- 视频层：初始透明，于 canplay 时淡入覆盖封面 -->
-                            <video id="video-p${i}"
-                                class="video-fullscreen ${this.state.isScaleFill ? 'object-cover' : 'object-contain'} opacity-0 transition-opacity duration-500 z-10"
-                                playsinline webkit-playsinline muted autoplay
-                                poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
-                            
-                            <!-- 遅罩层：置于视频之上以屏蔽长按啇出的系统原生下载菜单 -->
-                            <div class="touch-layer absolute inset-0 z-20" style="-webkit-touch-callout: none;"></div>
-                            
+                            <div id="magazine-pair-${i}" class="magazine-pair">
+                                <div class="photo-frame photo-frame-primary">
+                                    <img id="thumb-${i}" class="absolute inset-0 w-full h-full z-10 opacity-0 transition-opacity duration-[850ms] ${this.state.isScaleFill ? 'object-cover' : 'object-contain'}" src="" alt="" />
+                                    <div id="poster-${i}" class="absolute inset-0 bg-cover bg-center scale-[1.15] blur-xl transition-opacity duration-300 z-0 ${this.state.isScaleFill ? 'opacity-0' : 'opacity-70'}"></div>
+                                    <div id="overlay-${i}" class="absolute inset-0 bg-black/40 transition-opacity duration-300 z-[1] ${this.state.isScaleFill ? 'opacity-0' : 'opacity-100'}"></div>
+                                </div>
+                                <div class="photo-frame photo-frame-secondary">
+                                    <img id="thumb2-${i}" class="absolute inset-0 w-full h-full z-10 opacity-0 transition-opacity duration-[850ms] ${this.state.isScaleFill ? 'object-cover' : 'object-contain'}" src="" alt="" />
+                                    <div id="poster2-${i}" class="absolute inset-0 bg-cover bg-center scale-[1.15] blur-xl transition-opacity duration-300 z-0 ${this.state.isScaleFill ? 'opacity-0' : 'opacity-70'}"></div>
+                                    <div id="overlay2-${i}" class="absolute inset-0 bg-black/40 transition-opacity duration-300 z-[1] ${this.state.isScaleFill ? 'opacity-0' : 'opacity-100'}"></div>
+                                </div>
+                            </div>
+
                             <div id="playBtn-${i}" class="play-pause-btn">
                                 <i data-lucide="play" class="stroke-white w-8 h-8"></i>
                             </div>
@@ -1405,6 +1356,7 @@
             }
 
             renderGridView() {
+                this.clearSlideshowTimer();
                 this.dom.slides = null;
                 const container = this.dom.videoContainer;
                 document.documentElement.scrollTop = 0;
@@ -1458,13 +1410,13 @@
                 }
 
                 // 背景海报模糊层更新
-                const currentVideo = this.state.videos[this.state.currentIndex];
-                const bgPosterStr = currentVideo ? this.getImageSrc(currentVideo) : this.getImageSrc(null);
+                const currentPhoto = this.state.videos[this.state.currentIndex];
+                const bgPosterStr = currentPhoto ? this.getImageSrc(currentPhoto) : this.getImageSrc(null);
                 if (bgPosterStr) {
                     bgLayer.style.backgroundImage = `url('${bgPosterStr}')`;
                 }
 
-                let libraryName = '全部视频';
+                let libraryName = '全部照片';
                 if (this.state.searchTerm) {
                     libraryName = `搜索：${this.state.searchTerm}`;
                 } else if (this.state.isFilteredByTag && this.state.currentTag) {
@@ -1535,7 +1487,7 @@
                             <i data-lucide="search" class="w-4 h-4 text-gray-400 flex-shrink-0"></i>
                             <input id="gridSearchInput" type="search"
                                    value="${this.state.searchTerm}"
-                                   placeholder="视频名、演员、描述…"
+                                   placeholder="照片名、人物、描述…"
                                    class="flex-1 bg-transparent text-white text-sm outline-none placeholder-gray-500 min-w-0">
                         </div>
                     `;
@@ -1605,16 +1557,6 @@
                         img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1" height="1"%3E%3Crect width="1" height="1" fill="%23333"%2F%3E%3C%2Fsvg%3E';
                     };
                     el.appendChild(img);
-
-                    if (video.RunTimeTicks) {
-                        const duration = Math.floor(video.RunTimeTicks / 10000000);
-                        const mins = Math.floor(duration / 60);
-                        const secs = duration % 60;
-                        const timeBadge = document.createElement('div');
-                        timeBadge.className = 'absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 py-0.5 rounded';
-                        timeBadge.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-                        el.appendChild(timeBadge);
-                    }
 
                     gridWrapper.appendChild(el);
                 });
@@ -1711,234 +1653,401 @@
             }
 
             // 缓冲渲染逻辑
+            isMagazineModeActive() {
+                return !!(
+                    this.config.magazineMode &&
+                    this.state.viewMode === 'stream' &&
+                    window.innerWidth >= 1024 &&
+                    window.innerWidth > window.innerHeight &&
+                    this.state.videos.length > 1
+                );
+            }
+
+            getGalleryStep() {
+                return this.isMagazineModeActive() ? 2 : 1;
+            }
+
+            getSlideshowIntervalMs() {
+                return this.clampSlideshowInterval(this.config.slideshowInterval) * 1000;
+            }
+
+            clearSlideshowTimer() {
+                if (this.slideshowTimer) {
+                    clearTimeout(this.slideshowTimer);
+                    this.slideshowTimer = null;
+                }
+            }
+
+            isSlideshowAllowed() {
+                return !!(
+                    this.config.autoplay !== false &&
+                    !this.state.isSlideshowPaused &&
+                    this.state.viewMode === 'stream' &&
+                    this.state.videos.length > 1 &&
+                    !this.isAnyModalOpen()
+                );
+            }
+
+            scheduleSlideshow() {
+                this.clearSlideshowTimer();
+                if (!this.isSlideshowAllowed()) return;
+                const step = this.getGalleryStep();
+                if (this.state.currentIndex + step >= this.state.videos.length) return;
+                this.slideshowTimer = setTimeout(() => {
+                    this.slideshowTimer = null;
+                    this.nextVideo(true);
+                }, this.getSlideshowIntervalMs());
+            }
+
+            restartPhotoMotion(img) {
+                if (!img) return;
+                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                    img.classList.remove('photo-motion');
+                    img.style.transform = '';
+                    return;
+                }
+                img.style.setProperty('--photo-motion-duration', `${this.clampSlideshowInterval(this.config.slideshowInterval)}s`);
+                img.classList.remove('photo-motion');
+                void img.offsetWidth;
+                img.classList.add('photo-motion');
+            }
+
+            restartSlideMotion(slotIndex) {
+                ['', '2'].forEach((suffix) => {
+                    const img = document.getElementById(`thumb${suffix}-${slotIndex}`);
+                    if (img && img.getAttribute('src')) this.restartPhotoMotion(img);
+                });
+            }
+
+            setPhotoFrame(slotIndex, item, suffix = '') {
+                const thumb = document.getElementById(`thumb${suffix}-${slotIndex}`);
+                const poster = document.getElementById(`poster${suffix}-${slotIndex}`);
+                const overlay = document.getElementById(`overlay${suffix}-${slotIndex}`);
+                if (!thumb || !poster || !overlay) return;
+
+                if (!item) {
+                    thumb.removeAttribute('src');
+                    thumb.style.opacity = '0';
+                    poster.style.backgroundImage = '';
+                    poster.style.opacity = '0';
+                    overlay.style.opacity = '0';
+                    return;
+                }
+
+                const src = this.getImageSrc(item);
+                thumb.style.opacity = '0';
+                thumb.classList.remove('object-cover', 'object-contain');
+                thumb.classList.add(this.state.isScaleFill ? 'object-cover' : 'object-contain');
+                thumb.onerror = () => { thumb.src = this.getImageSrc(null); thumb.style.opacity = '1'; };
+                thumb.onload = () => {
+                    thumb.style.opacity = '1';
+                    if (thumb.closest('.slide-item')?.classList.contains('is-active')) {
+                        this.restartPhotoMotion(thumb);
+                    } else {
+                        thumb.classList.remove('photo-motion');
+                    }
+                };
+                thumb.src = src;
+                if (thumb.complete && thumb.naturalWidth > 0) {
+                    thumb.onload();
+                }
+
+                poster.style.backgroundImage = `url('${src}')`;
+                poster.style.opacity = this.state.isScaleFill ? '0' : '0.7';
+                overlay.style.opacity = this.state.isScaleFill ? '0' : '1';
+            }
+
             renderBuffer() {
                 if (this.state.viewMode !== 'stream' || !this.dom.slides) return;
 
-                this.dom.videoContainer.style.transform = `translateX(-${this.state.currentIndex * 100}%)`;
+                this.dom.videoContainer.style.transform = 'none';
 
                 const offsets = [-1, 0, 1];
+                const step = this.getGalleryStep();
+                const magazineActive = this.isMagazineModeActive();
+                const activePhotoIds = new Set();
+                const activeSlotIds = new Set();
                 offsets.forEach((offset) => {
-                    const videoIdx = this.state.currentIndex + offset;
+                    const videoIdx = this.state.currentIndex + (offset * step);
                     if (videoIdx < 0 || videoIdx >= this.state.videos.length) return;
 
                     const slideIdx = (videoIdx % 3 + 3) % 3;
                     const slideEl = this.dom.slides[slideIdx];
                     const videoData = this.state.videos[videoIdx];
+                    const secondaryData = magazineActive ? this.state.videos[videoIdx + 1] : null;
+                    const isCurrent = offset === 0;
+                    const wasActive = slideEl.dataset.active === 'true';
+                    activePhotoIds.add(String(videoData.Id));
+                    if (secondaryData?.Id) activePhotoIds.add(String(secondaryData.Id));
+                    activeSlotIds.add(slideIdx);
 
-                    slideEl.style.transform = `translateX(${videoIdx * 100}%)`;
+                    slideEl.style.transform = 'none';
                     slideEl.style.display = 'block';
+                    slideEl.classList.toggle('is-active', isCurrent);
+                    slideEl.classList.toggle('is-buffered', !isCurrent);
+                    slideEl.dataset.active = isCurrent ? 'true' : 'false';
 
-                    if (slideEl.dataset.id !== videoData.Id) {
-                        slideEl.dataset.id = videoData.Id;
-                        const posterSrc = this.getImageSrc(videoData);
+                    const pairEl = document.getElementById(`magazine-pair-${slideIdx}`);
+                    if (pairEl) pairEl.classList.toggle('is-magazine', magazineActive && !!secondaryData);
 
-                        // 纯图片/画册模式：图片 thumb 保持全屏可见，并自适应应用缩放/填充类名
-                        const thumbEl = document.getElementById(`thumb-${slideIdx}`);
-                        if (thumbEl) {
-                            thumbEl.src = posterSrc;
-                            thumbEl.style.opacity = '1';
-                            thumbEl.classList.remove('object-cover', 'object-contain');
-                            thumbEl.classList.add(this.state.isScaleFill ? 'object-cover' : 'object-contain');
-                            thumbEl.onerror = () => { thumbEl.src = this.getImageSrc(null); };
-                        }
-
-                        // 模糊背景（contain 模式下用）
-                        const posterEl = document.getElementById(`poster-${slideIdx}`);
-                        if (posterEl) {
-                            posterEl.style.backgroundImage = `url('${posterSrc}')`;
-                            posterEl.style.opacity = this.state.isScaleFill ? '0' : '0.7';
-                        }
-
-                        // 《修复点①》 视频重置为透明（封面图作为占位）
-                        const videoEl = document.getElementById(`video-p${slideIdx}`);
-                        videoEl.style.opacity = '0';
-                        videoEl.onerror = null;
-
-                        // ── iOS 平台特异性极简优化：iOS 限制并发多流 Range 请求，不预加载相邻视频 ──
-                        const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-                            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-                        if (isIOS && offset !== 0) {
-                            // iOS 下对相邻视频只清理，不预加载
-                            if (videoEl.src) {
-                                videoEl.removeAttribute('src');
-                                videoEl.load();
-                            }
-                        } else {
-                            // 非 iOS 设备，或当前正在播放的项目：如果有 LivePhoto 特例或视频，加载视频源
-                            const targetItem = videoData.liveVideoItem || (videoData.Type === 'Video' ? videoData : null);
-                            if (targetItem) {
-                                const preloadSrc = this.getVideoSrc(targetItem.Id, targetItem, false);
-                                if (videoEl.src !== preloadSrc) {
-                                    if (isIOS) {
-                                        videoEl.removeAttribute('src');
-                                        videoEl.load();
-                                    }
-                                    videoEl.src = preloadSrc;
-                                    videoEl.load();
-                                }
-                            } else {
-                                if (videoEl.src) {
-                                    videoEl.removeAttribute('src');
-                                    videoEl.load();
-                                }
-                            }
-                        }
-
-                        // 【关键修复】防止声音重叠：
-                        // 预加载的视频（offset != 0）必须强制静音，
-                        // 只有当前视频（offset == 0）遵循全局静音状态。
-                        videoEl.muted = (offset === 0) ? this.state.isMuted : true;
-
-                        document.getElementById(`playBtn-${slideIdx}`).classList.remove('paused');
+                    const datasetId = [videoData.Id, secondaryData?.Id || '', magazineActive ? 'm' : 's', this.state.isScaleFill ? 'cover' : 'contain'].join(':');
+                    if (slideEl.dataset.id !== datasetId) {
+                        slideEl.dataset.id = datasetId;
+                        this.setPhotoFrame(slideIdx, videoData);
+                        this.setPhotoFrame(slideIdx, secondaryData, '2');
                     }
+                    if (isCurrent && !wasActive) this.restartSlideMotion(slideIdx);
+                    this.updateCenterPlaybackButton(slideIdx);
+                    this.ensurePhotoMetadata(videoData, offset === 0);
+                    if (secondaryData) this.ensurePhotoMetadata(secondaryData, false);
                 });
+                this.abortInactivePhotoMetadata(activePhotoIds);
 
-                // 隐藏范围外的卡片（只清空 src，不调 load()）
                 for (let i = 0; i < 3; i++) {
-                    const activeIndices = offsets.map(o => (this.state.currentIndex + o));
-                    const currentSlideVideoIdx = activeIndices.find(idx => ((idx % 3 + 3) % 3) === i);
-                    if (currentSlideVideoIdx === undefined || currentSlideVideoIdx < 0 || currentSlideVideoIdx >= this.state.videos.length) {
+                    if (!activeSlotIds.has(i)) {
                         this.dom.slides[i].style.display = 'none';
+                        this.dom.slides[i].classList.remove('is-active', 'is-buffered');
+                        this.dom.slides[i].dataset.active = 'false';
                         this.dom.slides[i].dataset.id = '';
-                        const videoEl = document.getElementById(`video-p${i}`);
-                        if (videoEl) {
-                            videoEl.onerror = null;
-                            videoEl.pause();
-                            videoEl.style.opacity = '0';
-                            videoEl.removeAttribute('src');
-                            videoEl.load();
-                        }
+                        this.setPhotoFrame(i, null);
+                        this.setPhotoFrame(i, null, '2');
+                        this.updateCenterPlaybackButton(i);
                     }
                 }
                 this.updateUI();
+                this.scheduleSlideshow();
             }
 
-            loadVideo(index) {
+            abortInactivePhotoMetadata(activePhotoIds) {
+                this.photoMetadataControllers.forEach((controller, id) => {
+                    if (!activePhotoIds.has(id)) controller.abort();
+                });
+            }
+
+            getPhotoDisplayName(item) {
+                const raw = item?.Path || item?.Name || '';
+                let name = String(raw).split(/[\\/]/).pop() || String(raw);
+                try { name = decodeURIComponent(name); } catch (e) { }
+                name = name.split(/[?#]/)[0].trim();
+                name = name.replace(/\.[^./\\]+$/, '').trim();
+                return name || '-';
+            }
+
+            getPhotoMetadataText(item) {
+                if (!item?.Id) return '-';
+                return this.photoMetadataCache.get(String(item.Id))?.text || '-';
+            }
+
+            buildPhotoDownloadUrl(item) {
+                if (!item?.Id || !this.config.server || !this.config.token) return '';
+                return fixUrlForJellyfin(`${this.config.server}/emby/Items/${item.Id}/Download?api_key=${this.config.token}`);
+            }
+
+            ensurePhotoMetadata(item, shouldRefreshUi = false) {
+                if (!item?.Id) return;
+                const id = String(item.Id);
+                const cached = this.photoMetadataCache.get(id);
+                if (cached) {
+                    return;
+                }
+                if (this.photoMetadataControllers.has(id)) return;
+
+                this.photoMetadataCache.set(id, { status: 'loading', text: '-' });
+                const controller = new AbortController();
+                this.photoMetadataControllers.set(id, controller);
+                this.loadPhotoMetadata(item, controller.signal)
+                    .then(text => {
+                        this.photoMetadataCache.set(id, { status: 'done', text: text || '-' });
+                    })
+                    .catch((error) => {
+                        if (error?.name === 'AbortError') this.photoMetadataCache.delete(id);
+                        else this.photoMetadataCache.set(id, { status: 'error', text: '-' });
+                    })
+                    .finally(() => {
+                        this.photoMetadataControllers.delete(id);
+                        if (this.state.videos[this.state.currentIndex]?.Id === item.Id) this.updateUI();
+                    });
+            }
+
+            async loadPhotoMetadata(item, signal) {
+                const url = this.buildPhotoDownloadUrl(item);
+                if (!url) return '-';
+                const res = await fetch(url, {
+                    headers: {
+                        'Range': 'bytes=0-262143',
+                        'X-Emby-Authorization': `Emby Client="EmbyX", Device="${this.config.deviceName}", DeviceId="${this.config.deviceId}", Version="${this.config.appVersion}"${this.config.token ? `, Token="${this.config.token}"` : ''}`
+                    },
+                    signal
+                });
+                if (!res.ok && res.status !== 206) return '-';
+                const buffer = await res.arrayBuffer();
+                return this.parseEmbeddedImageMetadata(buffer);
+            }
+
+            parseEmbeddedImageMetadata(buffer) {
+                const bytes = new Uint8Array(buffer);
+                if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return '-';
+
+                const exifChunks = [];
+                const xmpChunks = [];
+                let offset = 2;
+                while (offset + 4 < bytes.length) {
+                    if (bytes[offset] !== 0xff) break;
+                    const marker = bytes[offset + 1];
+                    if (marker === 0xda || marker === 0xd9) break;
+                    const length = (bytes[offset + 2] << 8) + bytes[offset + 3];
+                    if (length < 2 || offset + 2 + length > bytes.length) break;
+                    if (marker === 0xe1) {
+                        const dataStart = offset + 4;
+                        const dataEnd = offset + 2 + length;
+                        const header = this.asciiFromBytes(bytes, dataStart, Math.min(dataStart + 35, dataEnd));
+                        if (header.startsWith('Exif\0\0')) {
+                            exifChunks.push(bytes.slice(dataStart + 6, dataEnd));
+                        } else if (header.startsWith('http://ns.adobe.com/xap/1.0/\0')) {
+                            xmpChunks.push(bytes.slice(dataStart + 29, dataEnd));
+                        }
+                    }
+                    offset += 2 + length;
+                }
+
+                const exif = exifChunks.length ? this.parseExifTiff(exifChunks[0]) : {};
+                const xmp = xmpChunks.length ? this.parseXmpPacket(xmpChunks[0]) : {};
+                return this.formatPhotoMetadata({ ...exif, ...xmp });
+            }
+
+            asciiFromBytes(bytes, start, end) {
+                let out = '';
+                for (let i = start; i < end; i++) out += String.fromCharCode(bytes[i]);
+                return out;
+            }
+
+            decodeTextBytes(bytes) {
+                try {
+                    return new TextDecoder('utf-8').decode(bytes).replace(/\0+$/g, '').trim();
+                } catch (e) {
+                    return this.asciiFromBytes(bytes, 0, bytes.length).replace(/\0+$/g, '').trim();
+                }
+            }
+
+            parseExifTiff(tiffBytes) {
+                const view = new DataView(tiffBytes.buffer, tiffBytes.byteOffset, tiffBytes.byteLength);
+                if (view.byteLength < 8) return {};
+                const little = view.getUint16(0, false) === 0x4949;
+                if (view.getUint16(2, little) !== 42) return {};
+                const firstIfd = view.getUint32(4, little);
+                const tags = {};
+                const tagNames = {
+                    0x010f: 'make',
+                    0x0110: 'model',
+                    0x0132: 'dateTime',
+                    0x829a: 'exposureTime',
+                    0x829d: 'fNumber',
+                    0x8827: 'iso',
+                    0x9003: 'dateTimeOriginal',
+                    0x920a: 'focalLength',
+                    0xa434: 'lensModel'
+                };
+                const readValue = (type, count, valueOffset) => {
+                    const typeSize = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 7: 1, 9: 4, 10: 8 }[type] || 1;
+                    const size = typeSize * count;
+                    const ptr = size <= 4 ? valueOffset : view.getUint32(valueOffset, little);
+                    if (ptr < 0 || ptr + size > view.byteLength) return null;
+                    if (type === 2 || type === 7) return this.decodeTextBytes(tiffBytes.slice(ptr, ptr + size));
+                    if (type === 3) return count === 1 ? view.getUint16(ptr, little) : Array.from({ length: count }, (_, i) => view.getUint16(ptr + i * 2, little));
+                    if (type === 4) return count === 1 ? view.getUint32(ptr, little) : Array.from({ length: count }, (_, i) => view.getUint32(ptr + i * 4, little));
+                    if (type === 5) {
+                        const n = view.getUint32(ptr, little);
+                        const d = view.getUint32(ptr + 4, little);
+                        return d ? n / d : null;
+                    }
+                    return null;
+                };
+                const walkIfd = (ifdOffset, depth = 0) => {
+                    if (!ifdOffset || ifdOffset + 2 > view.byteLength || depth > 3) return;
+                    const count = view.getUint16(ifdOffset, little);
+                    for (let i = 0; i < count; i++) {
+                        const entry = ifdOffset + 2 + i * 12;
+                        if (entry + 12 > view.byteLength) break;
+                        const tag = view.getUint16(entry, little);
+                        const type = view.getUint16(entry + 2, little);
+                        const valueCount = view.getUint32(entry + 4, little);
+                        if (tag === 0x8769 || tag === 0x8825) {
+                            walkIfd(view.getUint32(entry + 8, little), depth + 1);
+                            continue;
+                        }
+                        const name = tagNames[tag];
+                        if (name && tags[name] == null) tags[name] = readValue(type, valueCount, entry + 8);
+                    }
+                };
+                walkIfd(firstIfd);
+                return tags;
+            }
+
+            parseXmpPacket(xmpBytes) {
+                const xml = this.decodeTextBytes(xmpBytes);
+                if (!xml) return {};
+                const decode = (value) => value
+                    .replace(/&amp;/g, '&')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&quot;/g, '"')
+                    .replace(/&#039;|&apos;/g, "'")
+                    .trim();
+                const pickAttr = (name) => {
+                    const re = new RegExp(`${name}="([^"]+)"`);
+                    const m = xml.match(re);
+                    return m ? decode(m[1]) : '';
+                };
+                const pickTag = (name) => {
+                    const re = new RegExp(`<${name}[^>]*>([\\s\\S]*?)<\\/${name}>`);
+                    const m = xml.match(re);
+                    if (!m) return '';
+                    const li = m[1].match(/<rdf:li[^>]*>([\s\S]*?)<\/rdf:li>/);
+                    return decode((li ? li[1] : m[1]).replace(/<[^>]+>/g, ' '));
+                };
+                return {
+                    make: pickAttr('tiff:Make') || pickTag('tiff:Make'),
+                    model: pickAttr('tiff:Model') || pickTag('tiff:Model'),
+                    lensModel: pickAttr('aux:Lens') || pickAttr('exifEX:LensModel') || pickTag('aux:Lens') || pickTag('exifEX:LensModel'),
+                    dateTimeOriginal: pickAttr('exif:DateTimeOriginal') || pickAttr('xmp:CreateDate') || pickAttr('photoshop:DateCreated'),
+                    description: pickTag('dc:description'),
+                    keywords: pickTag('dc:subject')
+                };
+            }
+
+            formatPhotoMetadata(meta) {
+                const lines = [];
+                const camera = [meta.make, meta.model].filter(Boolean).join(' ');
+                if (camera) lines.push(`相机：${camera}`);
+                if (meta.lensModel) lines.push(`镜头：${meta.lensModel}`);
+                const params = [];
+                if (meta.fNumber) params.push(`f/${Number(meta.fNumber).toFixed(1).replace(/\.0$/, '')}`);
+                if (meta.exposureTime) params.push(this.formatExposure(meta.exposureTime));
+                if (meta.iso) params.push(`ISO ${Array.isArray(meta.iso) ? meta.iso[0] : meta.iso}`);
+                if (meta.focalLength) params.push(`${Number(meta.focalLength).toFixed(0)}mm`);
+                if (params.length) lines.push(`参数：${params.join(' · ')}`);
+                const date = meta.dateTimeOriginal || meta.dateTime;
+                if (date) lines.push(`时间：${String(date).replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3')}`);
+                if (meta.description) lines.push(`描述：${meta.description}`);
+                if (meta.keywords) lines.push(`关键词：${meta.keywords}`);
+                return lines.length ? lines.join('\n') : '-';
+            }
+
+            formatExposure(value) {
+                const n = Number(value);
+                if (!Number.isFinite(n) || n <= 0) return '';
+                if (n < 1) return `1/${Math.round(1 / n)}s`;
+                return `${n.toFixed(1).replace(/\.0$/, '')}s`;
+            }
+
+            loadPhoto(index) {
                 if (this.state.viewMode !== 'stream') return;
 
-                this.state.playSessionId = 'ex_' + Date.now().toString(16); // 每次加载新视频生成唯一会话 ID
                 this.renderBuffer(); // 确保 DOM 就位
 
                 const videoData = this.state.videos[this.state.currentIndex];
-                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                const videoEl = document.getElementById(`video-p${slideIdx}`);
-
-                if (!videoEl || !videoData) return;
-
-                // 短剧模式：记录当前本地播放进度标识
-                if (this.config.shortDrama && this.state.currentLibraryId) {
-                    const now = new Date().toISOString();
-                    localStorage.setItem(`emby_last_id_${this.state.currentLibraryId}`, videoData.Id);
-
-                    // 非首次加载时同步上报，防止启动污染时间戳
-                    if (!this._isFirstLoad) {
-                        localStorage.setItem(`emby_last_date_${this.state.currentLibraryId}`, now);
-                        // 1秒延迟防抖，避开高频滑动并发写冲突
-                        clearTimeout(this._syncTimer);
-                        this._syncTimer = setTimeout(() => {
-                            this.saveCloudSync(videoData.Id, this.state.currentLibraryId, this.state.currentLibraryType, now);
-                        }, 1000);
-                    } else {
-                        this._isFirstLoad = false;
-                    }
-                }
-
-                const targetItem = videoData.liveVideoItem || (videoData.Type === 'Video' ? videoData : null);
-                if (!targetItem) {
-                    videoEl.pause();
-                    if (videoEl.src) {
-                        videoEl.removeAttribute('src');
-                        videoEl.load();
-                    }
-                    videoEl.style.opacity = '0';
-                    this.toggleLoading(false);
-                    this.fetchPersonInfo(videoData);
-                    return;
-                }
-
-                // 取消自动连播时，Live 视频开启单曲循环
-                videoEl.loop = !this.state.isAutoplay;
-
-                const src = this.getVideoSrc(targetItem.Id, targetItem, true);
-                if (videoEl.src !== src) {
-                    videoEl.pause();
-                    const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-                    if (isIOS) {
-                        videoEl.removeAttribute('src');
-                        videoEl.load();
-                    }
-                    videoEl.src = src;
-                    videoEl.load();
-                }
-
-                // 同步全局静音状态（精准更新 SVG）
-                videoEl.muted = this.state.isMuted;
-                const muteIcon = this.dom.muteBtn.querySelector('svg');
-                if (muteIcon) {
-                    const iconName = this.state.isMuted ? 'volume-x' : 'volume-2';
-                    const iconColor = this.state.isMuted ? 'text-secondary' : 'stroke-white';
-                    this.dom.muteBtn.innerHTML = `<div class="w-12 h-12 flex items-center justify-center"><i data-lucide="${iconName}" class="${iconColor} w-6 h-6 drop-shadow-md"></i></div>`;
-                    lucide.createIcons({ nameAttr: 'data-lucide', attrs: {}, nodes: [this.dom.muteBtn] });
-                }
-
-                // 《修复点③》 加载圈延迟 300ms：局域网正常情况下用户完全不会看到加载圈
-                videoEl.onwaiting = () => {
-                    clearTimeout(this._waitingTimer);
-                    this._waitingTimer = setTimeout(() => this.toggleLoading(true), 300);
-                };
-                videoEl.onplaying = () => {
-                    clearTimeout(this._waitingTimer);
-                    this.toggleLoading(false);
-                    // 确保播放时图层可见，应对部分系统/浏览器事件次序差异
-                    videoEl.style.opacity = '1';
-                    this.reportPlayback('playing', videoEl);
-                };
-
-                // 《修复点①》 canplay 时视频淡入覆盖封面
-                videoEl.oncanplay = () => {
-                    clearTimeout(this._waitingTimer);
-                    this.toggleLoading(false);
-                    videoEl.style.opacity = '1';
-                };
-
-                // 处理预加载已经就绪的情况（readyState >= 3 表示已可播放）
-                if (videoEl.readyState >= 3) {
-                    clearTimeout(this._waitingTimer);
-                    this.toggleLoading(false);
-                    videoEl.style.opacity = '1';
-                }
-
-                videoEl.ontimeupdate = () => {
-                    if (!videoEl.duration) return;
-                    // DOM 更新限流 250ms，避免 timeupdate 高频触发导致布局抖动
-                    const nowMs = Date.now();
-                    if (nowMs - (this._lastDomUpdate || 0) >= 250) {
-                        this._lastDomUpdate = nowMs;
-                        const pct = (videoEl.currentTime / videoEl.duration) * 100;
-                        this.dom.progressLine.style.width = `${pct}%`;
-                        this.dom.currentTime.textContent = this.formatTime(videoEl.currentTime);
-                        this.dom.totalTime.textContent = this.formatTime(videoEl.duration);
-                    }
-                    this.reportPlayback('progress', videoEl); // 内部已有 5s 节流
-                };
-                videoEl.onpause = () => this.reportPlayback('progress', videoEl);
-
-                videoEl.onended = () => {
-                    this.reportPlayback('stopped', videoEl);
-                    if (this.state.viewMode === 'stream' && this.state.isAutoplay) {
-                        this.nextVideo();
-                    }
-                };
-
-                videoEl.onerror = () => {
-                    console.warn('视频播放失败，处理降级重试逻辑');
-                    this.toggleLoading(false);
-                    this.retryWithAltMode(this.state.currentIndex, videoData);
-                };
-
-                videoEl.dataset.retryCount = '0';
+                if (!videoData) return;
+                this.toggleLoading(false);
                 this.fetchPersonInfo(videoData);
             }
 
@@ -1948,6 +2057,7 @@
                 if (!btn || !img) return;
 
                 btn.classList.add('hidden');
+                this.recalculateMetaInfoHeight();
                 if (!videoData || !videoData.Id) return;
 
                 const currentId = String(videoData.Id);
@@ -1976,6 +2086,7 @@
                             btn.dataset.personName = person.Name;
                             img.src = `${server}/emby/Persons/${encodeURIComponent(person.Name)}/Images/Primary?api_key=${token}`;
                             btn.classList.remove('hidden');
+                            this.recalculateMetaInfoHeight();
                         }
                     }
                 } catch (e) {
@@ -1983,280 +2094,49 @@
                 }
             }
 
-            playVideo(index) {
-                if (this.state.viewMode !== 'stream') return;
-                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-
-                // Safari & Edge Autoplay Policy Bypass (解锁视频池)
-                if (!window._videosUnlocked) {
-                    const unlock = () => {
-                        window._videosUnlocked = true;
-                        [0, 1, 2].forEach(i => {
-                            const vi = document.getElementById(`video-p${i}`);
-                            if (vi && i !== slideIdx) {
-                                // 快速播放并暂停，获取浏览器授权令牌
-                                const p = vi.play();
-                                if (p !== undefined) p.then(() => vi.pause()).catch(() => { });
-                            }
-                        });
-                        document.removeEventListener('touchstart', unlock, true);
-                        document.removeEventListener('click', unlock, true);
-                    };
-                    document.addEventListener('touchstart', unlock, { once: true, capture: true });
-                    document.addEventListener('click', unlock, { once: true, capture: true });
-                }
-
-                // 停止非当前视频
-                [0, 1, 2].forEach(i => {
-                    const vi = document.getElementById(`video-p${i}`);
-                    if (vi && i !== slideIdx) {
-                        vi.pause();
-                        vi.currentTime = 0;
-                        // 优化：切换视频时，旧视频只需静默停止，不要显示暂停按钮，防止闪烁穿帮
-                        const btn = document.getElementById(`playBtn-${i}`);
-                        if (btn) btn.classList.remove('paused');
-                    }
-                });
-
-                const v = document.getElementById(`video-p${slideIdx}`);
-                const btn = document.getElementById(`playBtn-${slideIdx}`);
-                if (v) {
-                    if (!this.state.isMuted) v.muted = false;
-                    const playPromise = v.play();
-
-                    if (playPromise !== undefined) {
-                        playPromise.then(() => {
-                            this.state.isPlaying = true;
-                            if (btn) btn.classList.remove('paused');
-                        }).catch(error => {
-                            console.warn('播放被阻止(可能缺失交互):', error);
-                            this.state.isPlaying = false;
-                            this.toggleLoading(false);
-                            if (btn) btn.classList.add('paused');
-
-                            // 降级：如果被浏览器强行阻止，弹出UI引导用户点击
-                            if (!error || error.name === 'NotAllowedError' || error.name === 'AbortError') {
-                                this.showToast('浏览器限制，请手动播放');
-                                const app = document.getElementById('app');
-                                if (app.classList.contains('interface-hidden')) {
-                                    app.classList.remove('interface-hidden');
-                                    this.showInterfaceTemp();
-                                }
-                            }
-                        });
-                    }
-                }
-            }
-
-            retryWithAltMode(index, item) {
-                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                const v = document.getElementById(`video-p${slideIdx}`);
-                if (!v) return;
-
-                const retryCount = parseInt(v.dataset.retryCount || '0');
-                const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-                v.dataset.retryCount = String(retryCount + 1);
-
-                const { server, token } = this.config;
-                const deviceId = this.config.deviceId || 'EmbyX-Device';
-
-                if (this.config.useStatic) {
-                    // ── A. 直接播放模式下的自适应兼容回退 ───────────────────────
-                    if (isIOS) {
-                        if (window.activeHls) {
-                            window.activeHls.destroy();
-                            window.activeHls = null;
-                        }
-
-                        if (retryCount === 0) {
-                            // 原地重载重试，防瞬时网络波动
-                            v.load();
-                            this.playVideo(index);
-                        } else if (retryCount === 1 && this.state.playbackMethod === 'DirectPlay') {
-                            // 完美格式直连失败 ➔ 降级
-                            const vStream = item.MediaSources?.[0]?.MediaStreams?.find(s => s.Type === 'Video');
-                            const codec = (vStream?.Codec || item.MediaSources?.[0]?.VideoCodec || '').toLowerCase();
-                            if (codec === 'hevc') {
-                                // HEVC 的 HLS 流拷贝在 iOS 下有 fMP4 封装 500 崩溃 Bug，在此处禁止降级流拷贝，直接报错提示转码
-                                this.toggleLoading(false);
-                                this.state.playbackMethod = 'Failed';
-                                this.showToast('iOS 限制，请开启转码');
-                            } else {
-                                this.state.playbackMethod = 'DirectStream';
-                                v.src = this._buildHlsSrc(item.Id, item, false);
-                                v.load();
-                                this.playVideo(index);
-                            }
-                        } else {
-                            // 直连模式下不允许强制转码，直接标记失败
-                            this.toggleLoading(false);
-                            this.state.playbackMethod = 'Failed';
-                            this.showToast('iOS 限制，请开启转码');
-                        }
-                    } else {
-                        // 非 iOS 降级链：保持原样 (Direct Play -> Direct Stream)
-                        if (retryCount === 0) {
-                            if (window.activeHls) {
-                                window.activeHls.destroy();
-                                window.activeHls = null;
-                            }
-                            if (window.activeMpegtsPlayer) {
-                                window.activeMpegtsPlayer.destroy();
-                                window.activeMpegtsPlayer = null;
-                            }
-
-                            // 智能判定是否是 strm 直播流视频源
-                            const isStrm = (item.Path && item.Path.endsWith('.strm')) || 
-                                           (item.MediaSources && item.MediaSources[0] && 
-                                            (item.MediaSources[0].Path.startsWith('http') || 
-                                             item.MediaSources[0].Container === 'strm'));
-                            
-                            if (isStrm) {
-                                if (window.activeHls) {
-                                    window.activeHls.destroy();
-                                    window.activeHls = null;
-                                }
-                                if (window.activeMpegtsPlayer) {
-                                    window.activeMpegtsPlayer.destroy();
-                                    window.activeMpegtsPlayer = null;
-                                }
-
-                                const msId = item.MediaSources?.[0]?.Id || '';
-                                const playSessionId = this.state.playSessionId || ('ex_' + Date.now().toString(16));
-
-                                const mediaSource = item.MediaSources?.[0];
-                                const container = (mediaSource?.Container || '').toLowerCase();
-                                const path = (mediaSource?.Path || '').toLowerCase();
-                                const isFlv = container === 'flv' || path.includes('.flv') || path.includes('flv=') || path.includes('/flv');
-
-                                // 智能提取 strm 中的外部直播流 URL 以实现原画直连，绕过 Emby 的 Static 500 报错限制
-                                // 如果 path 是以 http 开头的真实网络流，前端直接用 mpegts/Hls 进行直连播放，不经过 Emby 服务器中转
-                                const playUrl = mediaSource?.Path && mediaSource.Path.startsWith('http') 
-                                    ? mediaSource.Path 
-                                    : fixUrlForJellyfin(`${server}/emby/Videos/${item.Id}/stream?Static=true&api_key=${token}&MediaSourceId=${msId}&DeviceId=${deviceId}&PlaySessionId=${playSessionId}`);
-
-                                if (isFlv && typeof mpegts !== 'undefined' && mpegts.isSupported()) {
-                                    this.state.playbackMethod = 'DirectPlay';
-                                    // 清理旧报错残留并解绑原生错误监听，防止直播抖动误触发降级导致反复刷新
-                                    v.removeAttribute('src');
-                                    v.onerror = null;
-
-                                    const player = mpegts.createPlayer({
-                                        type: 'mse',
-                                        isLive: true,
-                                        url: playUrl
-                                    }, {
-                                        enableWorker: true,
-                                        enableStashBuffer: false,
-                                        stashInitialSize: 128,
-                                        liveBufferLatencyChasing: true,
-                                        liveBufferLatencyMaxLatency: 1.5,
-                                        liveBufferLatencyMinRemain: 0.5
-                                    });
-                                    player.attachMediaElement(v);
-                                    player.load();
-                                    window.activeMpegtsPlayer = player;
-                                    this.playVideo(index);
-                                } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                                    this.state.playbackMethod = 'DirectPlay';
-                                    // 清理旧报错残留并解绑原生错误监听，防止直播抖动误触发降级导致反复刷新
-                                    v.removeAttribute('src');
-                                    v.onerror = null;
-
-                                    const hls = new Hls({
-                                        maxBufferSize: 0,
-                                        liveSyncDurationCount: 3,
-                                    });
-                                    hls.loadSource(playUrl);
-                                    hls.attachMedia(v);
-                                    window.activeHls = hls;
-                                    v.load();
-                                    this.playVideo(index);
-                                }
-                            } else {
-                                // 普通本地视频（如 MP4/MKV）：原生 HTML5 播放器，清理并卸载 Hls.js 和 mpegts
-                                if (window.activeHls) {
-                                    window.activeHls.destroy();
-                                    window.activeHls = null;
-                                }
-                                if (window.activeMpegtsPlayer) {
-                                    window.activeMpegtsPlayer.destroy();
-                                    window.activeMpegtsPlayer = null;
-                                }
-                                const params = `api_key=${token}&DeviceId=${deviceId}&VideoCodec=h264,hevc,av1&AllowVideoStreamCopy=true&AllowAudioStreamCopy=true`;
-                                this.state.playbackMethod = 'DirectStream';
-                                v.src = fixUrlForJellyfin(`${server}/emby/Videos/${item.Id}/stream.mp4?${params}`);
-                                v.load();
-                                this.playVideo(index);
-                            }
-                        } else {
-                            this.toggleLoading(false);
-                            this.state.playbackMethod = 'Failed';
-                            this.showToast('播放失败，请开启转码');
-                        }
-                    }
-                } else {
-                    // ── B. 转码模式下的兼容失效回退 ───────────────────────────
-                    if (retryCount === 0) {
-                        this.state.playbackMethod = 'Transcode';
-                        v.src = this._buildHlsSrc(item.Id, item, true); // forceReencode = true
-                        v.load();
-                        this.playVideo(index);
-                    } else {
-                        this.toggleLoading(false);
-                        this.state.playbackMethod = 'Failed';
-                        this.showToast('转码失败，请检查 Emby 设置');
-                    }
-                }
-            }
-
-            _buildHlsSrc(id, mediaItem, forceReencode = false) {
-                const { server, token } = this.config;
-                const mediaSource = mediaItem?.MediaSources?.[0];
-                const mediaSourceId = mediaSource?.Id || '';
-                const playSessionId = this.state.playSessionId || ('hls_' + id + '_' + Date.now());
-                const deviceId = this.config.deviceId || 'EmbyX-Device';
-
-                const vStream = mediaSource?.MediaStreams?.find(s => s.Type === 'Video');
-                const codec = (vStream?.Codec || mediaSource?.VideoCodec || '').toLowerCase();
-                const useTsContainer = forceReencode || codec === 'h264';
-
-                const params = [
-                    `api_key=${token}`,
-                    mediaSourceId ? `MediaSourceId=${mediaSourceId}` : '',
-                    `DeviceId=${deviceId}`,
-                    `PlaySessionId=${playSessionId}`,
-                    forceReencode ? `VideoCodec=h264` : `VideoCodec=h264,hevc,vp9,av1`, // 强转码锁定 h264；流拷贝声明全格式，fMP4 容器原生支持 VP9/AV1 流拷贝
-                    `AudioCodec=aac,mp3,ac3`,
-                    forceReencode ? `VideoBitrate=20000000` : '',   // 仅强转码时限制码率（局域网 20Mbps 上限）；流拷贝时不限制，按源码率传输
-                    `AudioBitrate=320000`,
-                    `TranscodingMaxAudioChannels=2`,
-                    useTsContainer ? `SegmentContainer=ts` : `SegmentContainer=mp4`,  // H264/HEVC 强制用 TS 容器避开 Emby 500 封装 Bug；AV1/VP9 保留用 fMP4
-                    `MinSegments=1`,
-                    useTsContainer ? `BreakOnNonKeyFrames=True` : '',  // 仅 TS 容器需要此关键帧优化
-                    forceReencode ? `AllowVideoStreamCopy=false` : `AllowVideoStreamCopy=true`,
-                    `AllowAudioStreamCopy=true`
-                ].filter(Boolean).join('&');
-
-                return fixUrlForJellyfin(`${server}/emby/Videos/${id}/master.m3u8?${params}`);
-            }
-
             togglePlay() {
-                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                const v = document.getElementById(`video-p${slideIdx}`);
-                const btn = document.getElementById(`playBtn-${slideIdx}`);
-                if (!v) return;
+                if (this.state.viewMode !== 'stream') return;
+                this.state.isSlideshowPaused = !this.state.isSlideshowPaused;
+                const app = document.getElementById('app');
+                if (app) app.classList.toggle('slideshow-paused', this.state.isSlideshowPaused);
 
-                if (v.paused) {
-                    v.play();
-                    this.state.isPlaying = true;
-                    if (btn) btn.classList.remove('paused');
+                if (this.state.isSlideshowPaused) {
+                    this.clearSlideshowTimer();
+                    this.showCenterPlaybackFeedback('play', true);
                 } else {
-                    v.pause();
-                    this.state.isPlaying = false;
-                    if (btn) btn.classList.add('paused');
+                    this.showCenterPlaybackFeedback('pause', false);
+                    this.scheduleSlideshow();
+                }
+                this.toggleLoading(false);
+                this.showInterfaceTemp();
+            }
+
+            updateCenterPlaybackButton(slotIndex = (this.state.currentIndex % 3 + 3) % 3) {
+                const btn = document.getElementById(`playBtn-${slotIndex}`);
+                if (!btn) return;
+                const isCurrent = slotIndex === ((this.state.currentIndex % 3 + 3) % 3);
+                const showPaused = isCurrent && this.state.isSlideshowPaused;
+                btn.innerHTML = `<i data-lucide="${showPaused ? 'play' : 'pause'}" class="stroke-white w-8 h-8"></i>`;
+                btn.classList.toggle('paused', showPaused);
+                lucide.createIcons({ root: btn });
+            }
+
+            showCenterPlaybackFeedback(icon, persist) {
+                if (this.playFeedbackTimer) {
+                    clearTimeout(this.playFeedbackTimer);
+                    this.playFeedbackTimer = null;
+                }
+                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
+                const btn = document.getElementById(`playBtn-${slideIdx}`);
+                if (!btn) return;
+                btn.innerHTML = `<i data-lucide="${icon}" class="stroke-white w-8 h-8"></i>`;
+                btn.classList.add('paused');
+                lucide.createIcons({ root: btn });
+                if (!persist) {
+                    this.playFeedbackTimer = setTimeout(() => {
+                        if (!this.state.isSlideshowPaused) btn.classList.remove('paused');
+                        this.playFeedbackTimer = null;
+                    }, 520);
                 }
             }
 
@@ -2266,35 +2146,13 @@
                 if (this.state.currentIndex === 0) {
                     return;
                 }
-                this.switchSlide(this.state.currentIndex - 1, 'down');
+                this.switchSlide(Math.max(0, this.state.currentIndex - this.getGalleryStep()), 'down');
             }
 
-            switchSlide(newIndex, direction) {
-                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                const curV = document.getElementById(`video-p${slideIdx}`);
-                if (curV) {
-                    curV.pause();
-                    if (window.activeMpegtsPlayer) {
-                        window.activeMpegtsPlayer.destroy();
-                        window.activeMpegtsPlayer = null;
-                    }
-                    this.reportPlayback('stopped', curV);
-                }
-
-                // 同步预就位目标 slide，再同步触发 container 位移动画
-
-                // 这样浏览器能在同一帧内确认 slide 位置，动画由 GPU 合成层完成，不会闪现
-                if (this.dom.slides) {
-                    const destSlideIdx = (newIndex % 3 + 3) % 3;
-                    const destSlide = this.dom.slides[destSlideIdx];
-                    if (destSlide) {
-                        // 预就位：让 slide 在动画帧前就已经在正确位置
-                        destSlide.style.transform = `translateX(${newIndex * 100}%)`;
-                        destSlide.style.display = 'block';
-                    }
-                }
-
-                this.state.currentIndex = newIndex;
+            switchSlide(newIndex, direction, isAuto = false) {
+                this.clearSlideshowTimer();
+                this.state.currentIndex = Math.min(Math.max(0, newIndex), Math.max(0, this.state.videos.length - 1));
+                newIndex = this.state.currentIndex;
 
                 if (newIndex >= this.state.videos.length - 5 && this.state.videos.length < (this.state.totalCount || 999999)) {
 
@@ -2304,262 +2162,12 @@
                     }
                 }
 
-                if (this.dom.videoContainer) {
-
-                    this.dom.videoContainer.style.transform = `translateX(-${newIndex * 100}%)`;
-                }
-
                 requestAnimationFrame(() => {
-
-                    this.loadVideo(newIndex);
-                    this.playVideo(newIndex);
+                    this.loadPhoto(newIndex);
                 });
             }
 
-            reportPlayback(event, videoEl, isKeepAlive = false) {
-                if (!this.config.server || !this.config.token || this.state.videos.length === 0) return;
-
-                const now = Date.now();
-
-                if (event === 'progress' && now - (this.state.lastReportTime || 0) < 5000) return;
-                if (event === 'progress') this.state.lastReportTime = now;
-
-                const videoData = this.state.videos[this.state.currentIndex];
-                if (!videoData || !videoEl) return;
-
-                const eventMap = { 'playing': 'TimeUpdate', 'progress': 'TimeUpdate', 'stopped': 'Stopped' };
-
-                const eventName = videoEl.paused ? 'Pause' : (eventMap[event] || 'TimeUpdate');
-                const mediaSourceId = videoData.MediaSources?.[0]?.Id || '';
-
-                if (event === 'playing') {
-                    this.reportCapabilities();
-                }
-
-                const ticks = Math.floor(videoEl.currentTime * 10000000);
-
-                let endpoint = '/Sessions/Playing';
-                if (event === 'progress') endpoint = '/Sessions/Playing/Progress';
-                if (event === 'stopped') endpoint = '/Sessions/Playing/Stopped';
-
-                const payload = {
-                    ItemId: videoData.Id,
-                    PositionTicks: ticks,
-                    IsPaused: videoEl.paused || event === 'stopped',
-                    IsMuted: videoEl.muted,
-                    VolumeLevel: Math.floor(videoEl.volume * 100),
-                    PlayMethod: this.state.playbackMethod || (this.config.useStatic ? 'DirectPlay' : 'Transcode'),
-                    EventName: eventName,
-                    CanSeek: true,
-                    PlaySessionId: this.state.playSessionId,
-                    QueueableMediaTypes: ["Video"]
-                };
-                if (mediaSourceId) payload.MediaSourceId = mediaSourceId;
-
-                fetch(`${this.config.server}/emby${endpoint}?api_key=${this.config.token}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Emby-Authorization': `Emby Client="EmbyX", Device="${this.config.deviceName}", DeviceId="${this.config.deviceId}", Version="${this.config.appVersion}"${this.config.token ? `, Token="${this.config.token}"` : ''}`
-                    },
-                    body: JSON.stringify(payload),
-                    keepalive: isKeepAlive
-                }).catch(() => { });
-            }
-
-            // --- 续播与同步逻辑 (方案 A: DisplayPreferences) ---
-
-            async saveCloudSync(itemId, libId, libType, date) {
-                try {
-                    const { server, token, userId } = this.config;
-                    const url = `${server}/emby/DisplayPreferences/EmbyX-Resume-Drama?userId=${userId}&api_key=${token}`;
-
-                    const prefs = {
-                        Id: "EmbyX-Resume-Drama",
-                        CustomPrefs: {
-                            lastId: itemId,
-                            libId: libId,
-                            libType: libType,
-                            date: date,
-                            deviceName: this.config.deviceName
-                        }
-                    };
-
-                    fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Emby-Authorization': `Emby Client="EmbyX", Device="${this.config.deviceName}", DeviceId="${this.config.deviceId}", Version="${this.config.appVersion}"${token ? `, Token="${token}"` : ''}`
-                        },
-                        body: JSON.stringify(prefs)
-                    }).catch(() => { });
-                } catch (e) { }
-            }
-
-            async checkCloudSync() {
-                if (!this.config.shortDrama) return;
-
-                try {
-                    const { server, token, userId } = this.config;
-                    const url = `${server}/emby/DisplayPreferences/EmbyX-Resume-Drama?userId=${userId}&api_key=${token}`;
-                    const res = await fetch(url, {
-                        headers: {
-                            'X-Emby-Authorization': `Emby Client="EmbyX", Device="${this.config.deviceName}", DeviceId="${this.config.deviceId}", Version="${this.config.appVersion}"${token ? `, Token="${token}"` : ''}`
-                        }
-                    });
-                    if (!res.ok) return;
-
-                    const data = await res.json();
-                    const cloud = data.CustomPrefs;
-                    if (!cloud || !cloud.lastId || !cloud.date) return;
-
-                    const localId = localStorage.getItem(`emby_last_id_${this.state.currentLibraryId}`);
-                    const localDateStr = localStorage.getItem(`emby_last_date_${this.state.currentLibraryId}`) || '';
-
-                    const cloudDate = new Date(cloud.date).getTime();
-                    const localDate = localDateStr ? new Date(localDateStr).getTime() : 0;
-
-                    // 只有云端进度更新，且 ID 不同时才提示
-                    if (cloudDate > localDate && cloud.lastId !== localId) {
-                        // 获取设备名称与视频名称
-                        let deviceDisplay = cloud.deviceName || "其他设备";
-                        let displayName = "更新的剧集";
-                        
-                        if (cloud.libId === this.state.currentLibraryId) {
-                            const item = this.state.videos.find(v => v.Id === cloud.lastId);
-                            if (item) displayName = item.Name;
-                        }
-
-                        this.dom.syncFileName.textContent = `检测到 ${deviceDisplay} 播放至：${displayName}`;
-                        this.state._pendingSyncItem = cloud;
-                        this.toggleModal('syncConfirmModal', true);
-                        lucide.createIcons();
-                    }
-                } catch (e) {
-                    console.warn('云端同步检测失败:', e);
-                }
-            }
-
-            async applyCloudSync() {
-                const cloud = this.state._pendingSyncItem;
-                if (!cloud) return;
-
-                this.toggleModal('syncConfirmModal', false);
-                this.showToast('正在同步进度...');
-
-                // 更新本地缓存，确保后续逻辑一致
-                localStorage.setItem(`emby_last_id_${cloud.libId}`, cloud.lastId);
-                localStorage.setItem(`emby_last_date_${cloud.libId}`, cloud.date);
-
-                if (cloud.libId !== this.state.currentLibraryId) {
-                    // 跨库跳转
-                    this.state.currentLibraryId = cloud.libId;
-                    this.state.currentLibraryType = cloud.libType;
-                    localStorage.setItem('emby_lib_id', cloud.libId);
-                    localStorage.setItem('emby_lib_type', cloud.libType);
-
-                    // 重新加载新库
-                    this.state.startIndex = 0;
-                    await this.fetchVideos(0, false);
-                    this.showToast('✅ 已跨库同步');
-                } else {
-                    // 同库跳转
-                    const index = this.state.videos.findIndex(v => v.Id === cloud.lastId);
-                    if (index !== -1) {
-                        this.state.currentIndex = index;
-                        this.renderSlides();
-                        this.loadVideo(index);
-                        this.showToast('✅ 进度已同步');
-                    } else {
-                        // 如果当前分页没找到，重刷该库
-                        this.state.startIndex = 0;
-                        await this.fetchVideos(0, false);
-                    }
-                }
-            }
-
-            reportCapabilities() {
-                if (this.state._capabilitiesReported) return;
-                const { server, token } = this.config;
-                if (!server || !token) return;
-                this.state._capabilitiesReported = true;
-                fetch(`${server}/emby/Sessions/Capabilities/Full?api_key=${token}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Emby-Authorization': `Emby Client="EmbyX", Device="${this.config.deviceName}", DeviceId="${this.config.deviceId}", Version="${this.config.appVersion}"${token ? `, Token="${token}"` : ''}`
-                    },
-                    body: JSON.stringify({
-                        PlayableMediaTypes: ["Video"],
-                        SupportsMediaControl: true,
-                        SupportsPersistentConnections: false
-                    })
-                }).catch(() => { });
-            }
-
             // --- 辅助功能 ---
-
-            getVideoSrc(id, mediaItem, isPrimaryPlayback = false) {
-                const { server, token, useStatic } = this.config;
-
-                // 获取视频流元数据
-                const mediaSource = mediaItem?.MediaSources?.[0];
-                const vStream = mediaSource?.MediaStreams?.find(s => s.Type === 'Video');
-                const codec = (vStream?.Codec || mediaSource?.VideoCodec || '').toLowerCase();
-                const container = (mediaSource?.Container || '').toLowerCase();
-                const codecTag = (vStream?.CodecTag || mediaSource?.VideoCodecTag || '').toLowerCase();
-
-                if (this.config.fnOS) {
-                    // 飞牛兼容层的 item.Id 就是原生 media_guid，流鉴权由 Go 代理补 Authorization。
-                    const mediaGuid = mediaItem?.Id || id;
-                    if (mediaGuid) {
-                        if (isPrimaryPlayback) this.state.playbackMethod = 'DirectPlay';
-                        return `${server}/v/api/v1/media/range/${encodeURIComponent(mediaGuid)}?api_key=${encodeURIComponent(token)}`;
-                    }
-                    if (isPrimaryPlayback) this.showToast('飞牛影视缺少 media_guid，无法播放');
-                    return '';
-                }
-
-                // ── 情况 1: 未勾选【直接播放】 (允许转码/稳妥模式) ──────────────────────
-                // 直接交给 Emby 服务端决策，使用 HLS 接口（允许流拷贝，排除 av1 宣告）
-                if (!useStatic) {
-                    if (isPrimaryPlayback) this.state.playbackMethod = 'Transcode';
-                    return this._buildHlsSrc(id, mediaItem);
-                }
-
-                // ── 情况 2: 已勾选【直接播放】 (绝不重编码/极限硬解模式) ────────────────────
-                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-                if (isIOS) {
-                    // 智能判定是否是原生完美支持的封装格式及编码（iOS 端 H.264/hvc1 MP4 视为完美格式，其他 HEVC 走 HLS 拷贝）
-                    const isMp4Container = container.includes('mp4') || container.includes('m4v') || container.includes('mov');
-                    const isNativeCompatible = (codec === 'h264' && isMp4Container) ||
-                                               (codec === 'hevc' && codecTag.includes('hvc1') && isMp4Container);
-
-                    if (!isNativeCompatible) {
-                        // 对于非完美兼容格式（如 HEVC hev1、VP9、AV1、MKV等），首播直接走轻量级的 HLS 视频流拷贝 (Direct Stream)
-                        if (isPrimaryPlayback) this.state.playbackMethod = 'DirectStream';
-                        return this._buildHlsSrc(id, mediaItem, false); // forceReencode = false
-                    }
-                }
-
-                // 余下所有情况（非苹果设备、或是苹果下完美兼容 of h264+mp4）执行原画直连 (Direct Play)
-                const playSessionId = this.state.playSessionId || ('ex_' + Date.now().toString(16));
-                const deviceId = this.config.deviceId || 'EmbyX-Device';
-                const msId = mediaSource?.Id || '';
-
-                const params = [
-                    `api_key=${token}`,
-                    `Static=true`,
-                    msId ? `MediaSourceId=${msId}` : '',
-                    `DeviceId=${deviceId}`,
-                    `PlaySessionId=${playSessionId}`
-                ].filter(Boolean).join('&');
-
-                if (isPrimaryPlayback) this.state.playbackMethod = 'DirectPlay';
-                return fixUrlForJellyfin(`${server}/emby/Videos/${id}/stream?${params}`);
-            }
 
             getImageSrc(video) {
                 const { server, token } = this.config;
@@ -2846,7 +2454,7 @@
                     }
                 }
 
-                // 直接从全量内存反向索引中读取当前视频所在的播放列表
+                // 直接从全量内存反向索引中读取当前照片所在的播放列表
                 const itemIdStr = String(item.Id);
                 const containedSet = this.state.itemPlaylistsMap[itemIdStr] || new Set();
 
@@ -3024,8 +2632,8 @@
                 this.toggleLoading(true);
                 try {
                     const { server, token, userId } = this.config;
-                    const sortStr = this.config.shortDrama ? 'SortBy=Path&SortOrder=Ascending' : 'SortBy=DateCreated&SortOrder=Descending';
-                    const url = `${server}/emby/Users/${userId}/Items?api_key=${token}&Recursive=true&IncludeItemTypes=Movie,Episode,Video,MusicVideo&Limit=150&Fields=Overview,Path,RunTimeTicks,MediaSources,Tags,TagItems&Tags=${encodeURIComponent(tagName)}&${sortStr}`;
+                    const sortStr = 'SortBy=DateCreated&SortOrder=Descending';
+                    const url = `${server}/emby/Users/${userId}/Items?api_key=${token}&Recursive=true&IncludeItemTypes=Photo&Limit=150&Fields=Overview,Path,RunTimeTicks,MediaSources,Tags,TagItems&Tags=${encodeURIComponent(tagName)}&${sortStr}`;
                     const res = await fetch(url, {
                         headers: {
                             'X-Emby-Authorization': `Emby Client="EmbyX", Device="${this.config.deviceName}", DeviceId="${this.config.deviceId}", Version="${this.config.appVersion}"${token ? `, Token="${token}"` : ''}`
@@ -3033,7 +2641,7 @@
                     });
                     if (res.ok) {
                         const data = await res.json();
-                        this.state.personVideos = data.Items || [];
+                        this.state.personVideos = this.filterDisplayPhotos(data.Items || []);
                         this.state.personTotalCount = data.TotalRecordCount || this.state.personVideos.length;
                         this.state.currentTag = tagName;
                         this.state.isFilteredByTag = true;
@@ -3063,28 +2671,66 @@
 
             // --- UI 更新与交互 ---
 
+            getMetaHeightLimitElement() {
+                const personBtn = document.getElementById('personBtn');
+                if (personBtn && !personBtn.classList.contains('hidden') && personBtn.offsetParent !== null) {
+                    return personBtn.querySelector('div') || personBtn;
+                }
+                return Array.from(document.querySelectorAll('.right-toolbar > div'))
+                    .find(el => !el.classList.contains('hidden') && el.offsetParent !== null);
+            }
+
+            collapseMetaInfo() {
+                const { videoTitle, videoDescription, videoDescriptionArea, videoDescriptionScroll } = this.dom;
+                if (!videoTitle || !videoDescription || !videoDescriptionArea || !videoDescriptionScroll) return;
+
+                videoTitle.classList.add('truncate');
+                videoTitle.classList.remove('whitespace-normal', 'break-all');
+                videoDescription.classList.add('line-clamp-2');
+                videoDescriptionArea.classList.remove('bg-black/60', 'backdrop-blur-md', 'rounded-xl', 'border', 'border-white/10', 'shadow-lg', 'overflow-hidden', 'mt-2');
+                videoDescriptionScroll.classList.remove('overflow-y-auto', 'overflow-x-hidden', 'overscroll-contain', 'my-[10px]', 'ml-3', 'mr-1', 'pr-3');
+                videoDescriptionArea.style.maxHeight = '';
+                videoDescriptionScroll.style.maxHeight = '';
+                videoDescriptionScroll.scrollTop = 0;
+            }
+
+            expandMetaInfo() {
+                const { videoTitle, videoDescription, videoDescriptionArea, videoDescriptionScroll } = this.dom;
+                if (!videoTitle || !videoDescription || !videoDescriptionArea || !videoDescriptionScroll) return;
+
+                videoDescription.classList.remove('line-clamp-2');
+                videoTitle.classList.remove('truncate');
+                videoTitle.classList.add('whitespace-normal', 'break-all');
+                videoDescriptionArea.classList.add('bg-black/60', 'backdrop-blur-md', 'rounded-xl', 'border', 'border-white/10', 'shadow-lg', 'overflow-hidden', 'mt-2');
+                videoDescriptionScroll.classList.add('overflow-y-auto', 'overflow-x-hidden', 'overscroll-contain', 'my-[10px]', 'ml-3', 'mr-1', 'pr-3');
+                this.recalculateMetaInfoHeight();
+            }
+
+            recalculateMetaInfoHeight() {
+                const { metaInfoContainer, videoTitle, videoDescription, videoDescriptionArea, videoDescriptionScroll } = this.dom;
+                if (!metaInfoContainer || !videoTitle || !videoDescription || !videoDescriptionArea || !videoDescriptionScroll) return;
+                if (videoDescription.classList.contains('line-clamp-2')) return;
+
+                const limitEl = this.getMetaHeightLimitElement();
+                const limitTop = limitEl ? limitEl.getBoundingClientRect().top : 0;
+                const metaRect = metaInfoContainer.getBoundingClientRect();
+                const titleRect = videoTitle.getBoundingClientRect();
+                const areaRect = videoDescriptionArea.getBoundingClientRect();
+                const titleGap = Math.max(0, areaRect.top - titleRect.bottom);
+                const cardMaxHeight = Math.max(0, Math.floor(metaRect.bottom - limitTop - titleRect.height - titleGap));
+                const scrollMaxHeight = Math.max(0, cardMaxHeight - 22);
+
+                videoDescriptionArea.style.maxHeight = `${cardMaxHeight}px`;
+                videoDescriptionScroll.style.maxHeight = `${scrollMaxHeight}px`;
+            }
+
             updateUI() {
                 const item = this.state.videos[this.state.currentIndex];
                 if (item) {
-                    this.dom.videoTitle.textContent = item.Name;
-                    this.dom.videoTitle.classList.add('truncate');
-                    this.dom.videoTitle.classList.remove('whitespace-normal', 'break-all');
-                    this.dom.videoDescription.classList.add('line-clamp-2');
-                    
-                    let overviewText = item.Overview || '暂无简介';
-                    let rawTags = [];
-                    if (Array.isArray(item.Tags) && item.Tags.length > 0) {
-                        rawTags = item.Tags.map(t => typeof t === 'string' ? t : (t.Name || ''));
-                    } else if (Array.isArray(item.TagItems) && item.TagItems.length > 0) {
-                        rawTags = item.TagItems.map(t => typeof t === 'string' ? t : (t.Name || ''));
-                    }
-                    rawTags = rawTags.filter(Boolean);
-
-                    let tagsHtml = '';
-                    if (rawTags.length > 0) {
-                        tagsHtml = ' ' + rawTags.map(tag => `<span class="tag-item font-bold text-primary hover:underline cursor-pointer mr-1.5 inline break-all" data-tag="${this.escapeHtml(tag)}">#${this.escapeHtml(tag)}</span>`).join(' ');
-                    }
-                    this.dom.videoDescription.innerHTML = this.escapeHtml(overviewText) + tagsHtml;
+                    this.dom.videoTitle.textContent = this.getPhotoDisplayName(item);
+                    this.collapseMetaInfo();
+                    this.dom.videoDescription.textContent = this.getPhotoMetadataText(item);
+                    this.ensurePhotoMetadata(item, true);
 
                     const favBtn = document.getElementById('favoriteBtn');
                     const isFav = item.UserData?.IsFavorite === true;
@@ -3123,7 +2769,7 @@
                 const item = this.state.videos[this.state.currentIndex];
                 if (!item) return;
 
-                this.dom.deleteFileName.textContent = '确认删除 ' + (item.Name || '此视频') + ' 吗？';
+                this.dom.deleteFileName.textContent = '确认删除 ' + (item.Name || '此照片') + ' 吗？';
                 this.toggleModal('deleteConfirmModal', true);
                 lucide.createIcons();
             }
@@ -3143,7 +2789,7 @@
                     });
 
                     if (!res.ok) {
-                        // 403：账号无管理权限；404：视频已不存在（也从列表移除）
+                        // 403：账号无管理权限；404：照片已不存在（也从列表移除）
                         if (res.status === 403) {
                             this.showToast('❌ 权限不足，请使用管理员账号');
                             this.toggleModal('deleteConfirmModal', false);
@@ -3171,8 +2817,7 @@
                         this.renderSlides();
 
                         if (this.state.videos.length > 0) {
-                            this.loadVideo(this.state.currentIndex);
-                            this.playVideo(this.state.currentIndex);
+                            this.loadPhoto(this.state.currentIndex);
                         }
                     }
                 } catch (e) {
@@ -3200,7 +2845,7 @@
             }
 
             // 随机模式：原地洗牌 videos 数组，保持 currentIndex 不变
-            // 这样 +1 下一个就是随机视频，且三槽预缓冲完全生效
+            // 这样 +1 下一个就是随机照片，且三槽预缓冲完全生效
             _shuffleAroundCurrent() {
                 const idx = this.state.currentIndex;
                 const cur = this.state.videos[idx];
@@ -3209,16 +2854,12 @@
                     const j = Math.floor(Math.random() * (i + 1));
                     [this.state.videos[i], this.state.videos[j]] = [this.state.videos[j], this.state.videos[i]];
                 }
-                // 将当前视频放回其在数组中的原位置
+                // 将当前照片放回其在数组中的原位置
                 const newPos = this.state.videos.findIndex(v => v.Id === cur.Id);
                 [this.state.videos[newPos], this.state.videos[idx]] = [this.state.videos[idx], this.state.videos[newPos]];
             }
 
             togglePlayMode() {
-                if (this.config.shortDrama) {
-                    this.showToast('ℹ️ 短剧模式已锁定顺序播放');
-                    return;
-                }
                 const isSeq = this.state.playMode === 'sequence';
                 this.state.playMode = isSeq ? 'random' : 'sequence';
                 localStorage.setItem('emby_play_mode', this.state.playMode);
@@ -3229,15 +2870,15 @@
 
                 if (isSeq) {
                     // 切换随机：保存原始列表，就地洗牌
-                    // currentIndex/物理 slot 不变，当前视频完全不受干扰
+                    // currentIndex/物理 slot 不变，当前照片完全不受干扰
                     this.state.originalVideos = [...this.state.videos];
                     this._shuffleAroundCurrent();
                     // 刷新相邻插槽（当前插槽内容不变，两侧插槽更新为随机顺序）
                     if (this.dom.slides) this.renderBuffer();
-                    this.showToast('🔀 随机播放（下一个）');
+                    this.showToast('🔀 随机浏览（下一张）');
                 } else {
-                    // 切回顺序：恢复原始列表，将当前视频对换到 currentIndex 位置
-                    // 确保物理 slot 不变、currentIndex 不变，当前播放零干扰
+                    // 切回顺序：恢复原始列表，将当前照片对换到 currentIndex 位置
+                    // 确保物理 slot 不变、currentIndex 不变，当前照片零干扰
                     const curId = this.state.videos[this.state.currentIndex]?.Id;
                     this.state.videos = [...this.state.originalVideos];
                     this.state.originalVideos = [];
@@ -3250,22 +2891,23 @@
                     }
                     // 刷新相邻插槽
                     if (this.dom.slides) this.renderBuffer();
-                    this.showToast('🔁 顺序播放（下一个）');
+                    this.showToast('🔁 顺序浏览（下一张）');
                 }
             }
 
 
             // 删除旧的 _buildShuffledQueue，nextVideo 恢复纯顺序逻辑
-            nextVideo() {
-                const nextIndex = this.state.currentIndex + 1;
+            nextVideo(isAuto = false) {
+                const nextIndex = this.state.currentIndex + this.getGalleryStep();
                 if (nextIndex >= this.state.videos.length) {
-                    this.showToast('已经是最后一个视频了');
+                    if (!isAuto) this.showToast('已经是最后一张照片了');
                     return;
                 }
-                this.switchSlide(nextIndex, 'up');
+                this.switchSlide(nextIndex, 'up', isAuto);
             }
 
             toggleViewMode() {
+                this.clearSlideshowTimer();
                 const isStream = this.state.viewMode === 'stream';
 
                 if (isStream && (this.state.isFilteredByPerson || this.state.isFilteredByTag)) {
@@ -3327,46 +2969,42 @@
                     if (app) app.classList.remove('grid-active');
                     this.dom.videoContainer.style.touchAction = 'pan-y';
                     this.renderSlides();
-                    this.loadVideo(this.state.currentIndex);
-                    this.playVideo(this.state.currentIndex);
+                    this.loadPhoto(this.state.currentIndex);
                     // 切回流模式后重新开启自动清屏计时
                     this.showInterfaceTemp();
                 }
             }
 
             toggleScaleMode() {
+                this.clearSlideshowTimer();
                 this.state.isScaleFill = !this.state.isScaleFill;
                 localStorage.setItem('emby_is_scale_fill', this.state.isScaleFill);
-                const videos = document.querySelectorAll('.video-fullscreen');
-                videos.forEach((v, index) => {
-                    v.classList.remove('object-cover', 'object-contain');
-                    v.classList.add(this.state.isScaleFill ? 'object-cover' : 'object-contain');
+                [0, 1, 2].forEach((index) => {
+                    ['', '2'].forEach((suffix) => {
+                        const thumb = document.getElementById(`thumb${suffix}-${index}`);
+                        const poster = document.getElementById(`poster${suffix}-${index}`);
+                        const overlay = document.getElementById(`overlay${suffix}-${index}`);
 
-                    const thumb = document.getElementById(`thumb-${index}`);
-                    const poster = document.getElementById(`poster-${index}`);
-                    const overlay = document.getElementById(`overlay-${index}`);
+                        if (thumb) {
+                            thumb.style.opacity = thumb.getAttribute('src') ? '1' : '0';
+                            thumb.classList.remove('object-cover', 'object-contain');
+                            thumb.classList.add(this.state.isScaleFill ? 'object-cover' : 'object-contain');
+                        }
 
-                    // 纯图片/画册模式：图片 thumb 永远保持可见，只在 contain 与 cover 类名间切换
-                    if (thumb) {
-                        thumb.style.opacity = '1';
-                        thumb.classList.remove('object-cover', 'object-contain');
-                        thumb.classList.add(this.state.isScaleFill ? 'object-cover' : 'object-contain');
-                    }
-
-                    if (this.state.isScaleFill) {
-                        // cover 模式：全屏裁剪填充，隐藏背后的模糊背景
-                        if (poster) poster.style.opacity = '0';
-                        if (overlay) overlay.style.opacity = '0';
-                    } else {
-                        // contain 模式：原始比例自适应完整显示，显示底层高颜值毛玻璃模糊背景
-                        if (poster) poster.style.opacity = '0.7';
-                        if (overlay) overlay.style.opacity = '1';
-                    }
+                        if (this.state.isScaleFill) {
+                            if (poster) poster.style.opacity = '0';
+                            if (overlay) overlay.style.opacity = '0';
+                        } else {
+                            if (poster) poster.style.opacity = poster.style.backgroundImage ? '0.7' : '0';
+                            if (overlay) overlay.style.opacity = poster?.style.backgroundImage ? '1' : '0';
+                        }
+                    });
                 });
 
                 const scaleBtn = this.dom.scaleBtn;
                 scaleBtn.innerHTML = `<div class="w-12 h-12 flex items-center justify-center"><i data-lucide="${this.state.isScaleFill ? 'maximize-2' : 'minimize-2'}" class="stroke-white w-6 h-6 drop-shadow-md"></i></div>`;
                 lucide.createIcons();
+                if (this.dom.slides) this.renderBuffer();
             }
 
 
@@ -3374,6 +3012,7 @@
                 const item = this.state.videos[this.state.currentIndex];
                 if (!item) return;
 
+                this.clearSlideshowTimer();
                 this.dom.mediaInfoModal.classList.remove('hidden');
                 // 打开详情面板也是交互，且属于遮罩状态，需重置/停止计时
                 this.showInterfaceTemp();
@@ -3389,71 +3028,36 @@
                     if (!res.ok) throw new Error('API Error');
                     const data = await res.json();
 
-                    if (data && data.MediaSources && data.MediaSources.length > 0) {
-                        const src = data.MediaSources[0];
-                        const c = src.Container || '未知';
-                        const vStream = src.MediaStreams?.find(s => s.Type === 'Video');
-                        const w = vStream?.Width || '?';
-                        const h = vStream?.Height || '?';
-                        const fps = vStream?.AverageFrameRate ? Math.round(parseFloat(vStream.AverageFrameRate)) : '?';
-                        const vCodec = vStream?.Codec || '未知';
-                        const aCodec = src.MediaStreams?.find(s => s.Type === 'Audio')?.Codec || '未知';
-                        const bitrate = src.Bitrate ? (src.Bitrate / 1000000).toFixed(2) + ' Mbps' : '未知';
-                        const fileSizeStr = src.Size ? (src.Size > 1024 * 1024 * 1024 ? (src.Size / (1024 * 1024 * 1024)).toFixed(1) + ' GB' : (src.Size / (1024 * 1024)).toFixed(1) + ' MB') : '未知';
-                        let transcodeState = '直接播放';
-                        if (this.state.playbackMethod === 'Failed') {
-                            transcodeState = '播放失败';
-                        } else if (this.state.playbackMethod === 'DirectPlay') {
-                            transcodeState = '直接播放';
-                        } else if (this.state.playbackMethod === 'DirectStream') {
-                            const audioCodec = (src.MediaStreams?.find(s => s.Type === 'Audio')?.Codec || '').toLowerCase();
-                            const isAudioNative = ['aac', 'mp3', 'ac3', 'eac3', 'aac_latm'].includes(audioCodec);
-                            if (isAudioNative) {
-                                transcodeState = '直接串流';
-                            } else {
-                                const audioLabel = { 'dts': 'DTS', 'truehd': 'TrueHD', 'opus': 'Opus', 'flac': 'FLAC', 'vorbis': 'Vorbis' }[audioCodec] || audioCodec.toUpperCase();
-                                transcodeState = `直接串流（${audioLabel}→AAC）`;
-                            }
-                        } else if (this.state.playbackMethod === 'Transcode' || this.state.playbackMethod === 'TranscodeStream') {
-                            transcodeState = '转码播放';
-                        } else {
-                            transcodeState = this.config.useStatic ? '直接播放' : '转码播放';
-                        }
+                    const src = data?.MediaSources?.[0] || {};
+                    const imageStream = src.MediaStreams?.find(s => s.Type === 'Image') || {};
+                    const w = imageStream.Width || data.Width || item.Width || '?';
+                    const h = imageStream.Height || data.Height || item.Height || '?';
+                    const format = (src.Container || item.Container || item.Path?.split('.').pop() || '未知').toUpperCase();
+                    const fileSizeStr = src.Size ? (src.Size > 1024 * 1024 * 1024 ? (src.Size / (1024 * 1024 * 1024)).toFixed(1) + ' GB' : (src.Size / (1024 * 1024)).toFixed(1) + ' MB') : '未知';
+                    const metaText = this.getPhotoMetadataText(item);
 
-                        // 布局说明：py-2 控制行高（间距），items-center 确保文字垂直居中
-                        this.dom.mediaInfoContent.innerHTML = `
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
-                                <span class="text-gray-500 text-right">分辨率</span>
-                                <span class="col-span-2 text-gray-200 font-mono">${w}x${h}@${fps}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
-                                <span class="text-gray-500 text-right">封装格式</span>
-                                <span class="col-span-2 text-gray-200">${c.toUpperCase()}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
-                                <span class="text-gray-500 text-right">视频编码</span>
-                                <span class="col-span-2 text-gray-200 font-mono">${vCodec.toUpperCase()}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
-                                <span class="text-gray-500 text-right">音频编码</span>
-                                <span class="col-span-2 text-gray-200 font-mono">${aCodec.toUpperCase()}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
-                                <span class="text-gray-500 text-right">总码率</span>
-                                <span class="col-span-2 text-gray-200 font-mono">${bitrate}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
-                                <span class="text-gray-500 text-right">文件体积</span>
-                                <span class="col-span-2 text-gray-200 font-mono">${fileSizeStr}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center">
-                                <span class="text-gray-500 text-right">播放策略</span>
-                                <span class="col-span-2 text-gray-200">${transcodeState}</span>
-                            </div>
-                        `;
-                    } else {
-                        this.dom.mediaInfoContent.innerHTML = `<div class="text-center text-red-400 py-4">无法获取媒体信息</div>`;
-                    }
+                    this.dom.mediaInfoContent.innerHTML = `
+                        <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
+                            <span class="text-gray-500 text-right">文件名</span>
+                            <span class="col-span-2 text-gray-200 break-all">${this.escapeHtml(this.getPhotoDisplayName(item))}</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
+                            <span class="text-gray-500 text-right">图片尺寸</span>
+                            <span class="col-span-2 text-gray-200 font-mono">${w}x${h}</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
+                            <span class="text-gray-500 text-right">图片格式</span>
+                            <span class="col-span-2 text-gray-200 font-mono">${this.escapeHtml(format)}</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
+                            <span class="text-gray-500 text-right">文件体积</span>
+                            <span class="col-span-2 text-gray-200 font-mono">${fileSizeStr}</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 py-2">
+                            <span class="text-gray-500 text-right">EXIF/XMP</span>
+                            <span class="col-span-2 text-gray-200 whitespace-pre-wrap break-all">${this.escapeHtml(metaText)}</span>
+                        </div>
+                    `;
                 } catch (e) {
                     this.dom.mediaInfoContent.innerHTML = `<div class="text-center text-red-400 py-4">获取数据失败</div>`;
                 }
@@ -3461,10 +3065,14 @@
 
             // --- 事件绑定 ---
             bindEvents() {
-                this.dom.clickToPlayOverlay.onclick = () => {
-                    this.dom.clickToPlayOverlay.style.display = 'none';
-                    this.playVideo(this.state.currentIndex);
+                const recalcMetaInfo = () => {
+                    this.recalculateMetaInfoHeight();
+                    if (this.state.viewMode === 'stream' && this.dom.slides) {
+                        this.renderBuffer();
+                    }
                 };
+                window.addEventListener('resize', recalcMetaInfo);
+                window.addEventListener('orientationchange', recalcMetaInfo);
 
                 this.dom.favoriteBtn.onclick = (e) => {
                     e.stopPropagation();
@@ -3550,16 +3158,10 @@
                         this.filterByTag(tagEl.dataset.tag);
                         return;
                     }
-                    const descEl = this.dom.videoDescription;
-                    const titleEl = this.dom.videoTitle;
-                    if (descEl.classList.contains('line-clamp-2')) {
-                        descEl.classList.remove('line-clamp-2');
-                        titleEl.classList.remove('truncate');
-                        titleEl.classList.add('whitespace-normal', 'break-all');
+                    if (this.dom.videoDescription.classList.contains('line-clamp-2')) {
+                        this.expandMetaInfo();
                     } else {
-                        descEl.classList.add('line-clamp-2');
-                        titleEl.classList.add('truncate');
-                        titleEl.classList.remove('whitespace-normal', 'break-all');
+                        this.collapseMetaInfo();
                     }
                 };
 
@@ -3567,12 +3169,14 @@
                     e.stopPropagation();
                     this.dom.mediaInfoModal.classList.add('hidden');
                     this.showInterfaceTemp();
+                    this.scheduleSlideshow();
                 };
 
                 this.dom.mediaInfoModal.onclick = (e) => {
                     if (e.target === e.currentTarget) {
                         this.dom.mediaInfoModal.classList.add('hidden');
                         this.showInterfaceTemp();
+                        this.scheduleSlideshow();
                     }
                 };
 
@@ -3583,22 +3187,6 @@
                         this.showInterfaceTemp();
                     }
                 });
-
-                this.dom.muteBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    this.state.isMuted = !this.state.isMuted;
-                    localStorage.setItem('emby_is_muted', this.state.isMuted);
-
-                    const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                    const v = document.getElementById(`video-p${slideIdx}`);
-                    if (v) {
-                        v.muted = this.state.isMuted;
-                    }
-
-                    const muteBtn = this.dom.muteBtn;
-                    muteBtn.innerHTML = `<div class="w-12 h-12 flex items-center justify-center"><i data-lucide="${this.state.isMuted ? 'volume-x' : 'volume-2'}" class="${this.state.isMuted ? 'text-secondary' : 'stroke-white'} w-6 h-6 drop-shadow-md"></i></div>`;
-                    lucide.createIcons();
-                };
 
                 this.dom.fullscreenBtn.onclick = (e) => {
                     e.stopPropagation();
@@ -3679,7 +3267,7 @@
                             this.toggleLoading(true);
                             try {
                                 const { server, token, userId } = this.config;
-                                const url = `${server}/emby/Users/${userId}/Items?api_key=${token}&Recursive=true&IncludeItemTypes=Movie,Episode,Video,MusicVideo&Limit=150&Fields=Overview,Path,RunTimeTicks,MediaSources,Tags,TagItems&Person=${encodeURIComponent(personName)}`;
+                                const url = `${server}/emby/Users/${userId}/Items?api_key=${token}&Recursive=true&IncludeItemTypes=Photo&Limit=150&Fields=Overview,Path,RunTimeTicks,MediaSources,Tags,TagItems&Person=${encodeURIComponent(personName)}`;
                                 const res = await fetch(url, {
                                     headers: {
                                         'X-Emby-Authorization': `Emby Client="EmbyX", Device="${this.config.deviceName}", DeviceId="${this.config.deviceId}", Version="${this.config.appVersion}"${token ? `, Token="${token}"` : ''}`
@@ -3687,7 +3275,7 @@
                                 });
                                 if (res.ok) {
                                     const data = await res.json();
-                                    this.state.personVideos = data.Items || [];
+                                    this.state.personVideos = this.filterDisplayPhotos(data.Items || []);
                                     this.state.personTotalCount = data.TotalRecordCount || this.state.personVideos.length;
                                     this.state.currentPerson = personName;
                                     this.state.viewMode = 'grid';
@@ -3752,8 +3340,6 @@
 
                 this.dom.confirmDeleteBtn.onclick = () => this.executeDelete();
                 this.dom.cancelDeleteBtn.onclick = () => this.toggleModal('deleteConfirmModal', false);
-                this.dom.confirmSyncBtn.onclick = () => this.applyCloudSync();
-                this.dom.cancelSyncBtn.onclick = () => this.toggleModal('syncConfirmModal', false);
 
                 this.dom.deleteConfirmModal.onclick = (e) => {
                     if (e.target === e.currentTarget) {
@@ -3761,35 +3347,12 @@
                     }
                 };
 
-                this.dom.syncConfirmModal.onclick = (e) => {
-                    if (e.target === e.currentTarget) {
-                        this.toggleModal('syncConfirmModal', false);
-                    }
-                };
-
-                document.getElementById('progressBarContainer').onclick = (e) => {
-                    e.stopPropagation();
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                    const v = document.getElementById(`video-p${slideIdx}`);
-                    if (v && v.duration) v.currentTime = ((e.clientX - rect.left) / rect.width) * v.duration;
-                };
-
-                // 统一的复杂手势拦截挂载 (长按, 拖拽, 双击)
+                // 图片画廊手势
                 const container = document.getElementById('app');
                 this.bindGestures(container);
 
                 // 键盘与遥控器适配
                 this.bindKeyboard();
-
-                // 网页卸载时上报 Stopped，清除 Session 残留
-                window.addEventListener('pagehide', () => {
-                    const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                    const curV = document.getElementById(`video-p${slideIdx}`);
-                    if (curV && this.config.server && this.config.token) {
-                        this.reportPlayback('stopped', curV, true);
-                    }
-                });
             }
 
             bindKeyboard() {
@@ -3828,9 +3391,9 @@
                                 }
                                 startItem?.focus();
                             } else {
-                                const isVideoGrid = document.getElementById('app').classList.contains('grid-active') && !profileActive && !libraryActive;
-                                if (isVideoGrid) {
-                                    // 视频网格：3 列规则偏移
+                                const isPhotoGrid = document.getElementById('app').classList.contains('grid-active') && !profileActive && !libraryActive;
+                                if (isPhotoGrid) {
+                                    // 照片网格：3 列规则偏移
                                     let nextIdx = currentIndex;
                                     if (key === 'ArrowDown' || lowKey === 's' || keyCode === 40) nextIdx += 3;
                                     else if (key === 'ArrowUp' || lowKey === 'w' || keyCode === 38) nextIdx -= 3;
@@ -3908,7 +3471,7 @@
 
                     if (isInput) return;
 
-                    // 1. 上下方向键 / WS：切换视频 (Keyboard & Remote)
+                    // 1. 上下方向键 / WS：打开相册选择
                     if (key === 'ArrowUp' || lowKey === 'w' || keyCode === 38) {
                         e.preventDefault();
                         this.toggleModal('libraryModal', true);
@@ -3954,7 +3517,7 @@
                             this.showInterfaceTemp();
                         }
                     }
-                    // 5. 新增快捷键适配 (R, E, F, G, V, I, U, M)
+                    // 5. 新增快捷键适配 (R, E, F, G, V, I, U)
                     else {
                         // 屏蔽 Cmd+R/Ctrl+R/Alt+R 刷新热键，防止被误判为切换播放模式
                         if (lowKey === 'r' && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -3986,7 +3549,7 @@
                                 setTimeout(() => this.dom.myBtn.classList.remove('nav-clicked'), 1000);
                             }
                         } else if (lowKey === 'v') {
-                            // 格子视图模式下屏蔽流媒体详情快捷键
+                            // 格子视图模式下屏蔽照片详情快捷键
                             const isGridActive = document.getElementById('app').classList.contains('grid-active');
                             if (!isGridActive) {
                                 if (!this.dom.mediaInfoModal.classList.contains('hidden')) {
@@ -3995,8 +3558,6 @@
                                     this.showMediaInfo();
                                 }
                             }
-                        } else if (lowKey === 'm') {
-                            this.dom.muteBtn.click();
                         } else if (lowKey === 'u') {
                             // 立即展示中心爱心特效
                             const heart = document.createElement('div');
@@ -4033,119 +3594,75 @@
             }
 
             bindGestures(container) {
-                let state = 'IDLE'; // IDLE, SPEED, DRAG
                 let x0 = 0, y0 = 0;
                 let t0 = 0;
-                let longPressTimer = null;
                 let clickTimer = null;
                 let clickCount = 0;
-                let targetTime = 0;
-                let originalTime = 0;
-                let gestureActive = false; // 防止右侧工具栏误触活动手势状态机
+                let lastTap = { x: 0, y: 0 };
+                let gestureActive = false;
 
-                // CSS 锁死: touch-action: none 禁止浏览器抢占所有方向的手势
-                // 不用 pan-y，否则 iOS 会在垂直 swipe 时触发 touchcancel，导致切换视频失效
                 container.style.touchAction = 'none';
                 container.style.userSelect = 'none';
                 container.style.webkitUserSelect = 'none';
 
-                const speedToast = document.createElement('div');
-                speedToast.className = 'absolute top-[calc(env(safe-area-inset-top)+20px)] left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-bold opacity-0 transition-opacity z-50 pointer-events-none flex items-center gap-2';
-                speedToast.innerHTML = '<i data-lucide="fast-forward" class="w-4 h-4 text-green-400"></i><span>2 倍速播放中</span>';
-                document.getElementById('app').appendChild(speedToast);
-                lucide.createIcons();
+                const isCenterTap = (x, y) => (
+                    x > window.innerWidth * 0.25 &&
+                    x < window.innerWidth * 0.75 &&
+                    y > window.innerHeight * 0.18 &&
+                    y < window.innerHeight * 0.82
+                );
 
-                const resetSpeed = () => {
-                    clearTimeout(longPressTimer);
-                    speedToast.classList.add('opacity-0');
-                    const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                    const v = document.getElementById(`video-p${slideIdx}`);
-                    if (v && v.playbackRate !== 1.0) v.playbackRate = 1.0;
-                };
-
-                const startHandler = (e) => {
-                    if (this.state.viewMode !== 'stream') { gestureActive = false; resetSpeed(); return; }
-                    if (this.isAnyModalOpen()) { gestureActive = false; resetSpeed(); return; }
-
-                    // 黑名单：点击这些 UI 元素时不触发手势（播放/暂停/倍速/滑动）
+                const isExcludedTarget = (target) => {
                     const excluded = [
-                        '.bottom-nav',    // 底部导航栏
-                        '.bottom-info',   // 底部进度条+标题区域
-                        '.right-toolbar', // 右侧侧边栏整块区域
+                        '.bottom-nav',
+                        '.bottom-info',
+                        '.right-toolbar',
                         '#favoriteBtn',
                         '#addToPlaylistBtn',
                         '#scaleBtn',
-                        '#muteBtn',
                         '#personBtn',
-                        '#fullscreenBtn', // 右上角全屏按钮
-                        '#deleteBtn',     // 左上角删除按钮
-                        'header',         // 顶部 safe header 栏
-                        '.safe-header',
-                        '#libraryModal',  // 媒体源选择弹窗
-                        '#addToPlaylistModal', // 播放列表弹窗
-                        '#mediaInfoModal',// 流媒体信息弹窗
-                        '#deleteConfirmModal', // 删除确认弹窗
-                        '.profile-layer', // 个人中心全屏面板
+                        '#fullscreenBtn',
+                        '#deleteBtn',
+                        '#libraryModal',
+                        '#addToPlaylistModal',
+                        '#mediaInfoModal',
+                        '#deleteConfirmModal',
+                        '.profile-layer',
                     ];
-                    if (excluded.some(sel => e.target.closest(sel))) {
+                    return excluded.some(sel => target.closest(sel));
+                };
+
+                const startHandler = (e) => {
+                    if (this.state.viewMode !== 'stream' || this.isAnyModalOpen() || isExcludedTarget(e.target)) {
                         gestureActive = false;
-                        resetSpeed();
                         return;
                     }
 
                     gestureActive = true;
-                    state = 'IDLE';
                     const t = e.touches ? e.touches[0] : e;
                     x0 = t.clientX;
                     y0 = t.clientY;
                     t0 = Date.now();
-
-                    const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                    const v = document.getElementById(`video-p${slideIdx}`);
-                    if (v) originalTime = v.currentTime;
-
-                    clearTimeout(longPressTimer);
-                    longPressTimer = setTimeout(() => {
-                        if (state === 'IDLE' && gestureActive && !this.isAnyModalOpen()) {
-                            state = 'SPEED';
-                            if (v) v.playbackRate = 2.0;
-                            speedToast.classList.remove('opacity-0');
-                        }
-                    }, 300);
                 };
 
                 const moveHandler = (e) => {
                     if (!gestureActive || this.state.viewMode !== 'stream' || this.isAnyModalOpen()) {
-                        if (state === 'SPEED') resetSpeed();
                         return;
                     }
                     const t = e.touches ? e.touches[0] : e;
                     const diffX = t.clientX - x0;
                     const diffY = t.clientY - y0;
 
-                    if (Math.abs(diffX) > Math.abs(diffY)) {
+                    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 8) {
                         if (e.cancelable) e.preventDefault();
-                    }
-
-                    if (Math.abs(diffX) > 15 || Math.abs(diffY) > 15) {
-                        clearTimeout(longPressTimer);
-
-                        if (state === 'SPEED') {
-                            resetSpeed();
-                        }
-
-                        // pic 画册模式禁用滑动拖拽进度条，将水平手势完整释放给左右划切照片
-                        /* DRAG 状态已禁用 */
                     }
                 };
 
                 const endHandler = (e) => {
                     if (!gestureActive || this.state.viewMode !== 'stream') {
-                        resetSpeed();
                         return;
                     }
                     gestureActive = false;
-                    clearTimeout(longPressTimer);
                     const t = e.changedTouches ? e.changedTouches[0] : e;
                     const diffX = t.clientX - x0;
                     const diffY = t.clientY - y0;
@@ -4164,28 +3681,26 @@
                     }
 
                     if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10 && time < 300) {
+                        lastTap = { x: t.clientX, y: t.clientY };
                         clickCount++;
                         if (clickCount === 1) {
                             clickTimer = setTimeout(() => {
                                 const app = document.getElementById('app');
-                                if (app.classList.contains('interface-hidden')) {
+                                if (isCenterTap(lastTap.x, lastTap.y)) {
+                                    this.togglePlay();
+                                } else if (app.classList.contains('interface-hidden')) {
                                     app.classList.remove('interface-hidden');
                                     this.showInterfaceTemp();
-                                } else {
-                                    this.togglePlay();
                                 }
                                 clickCount = 0;
                             }, 250);
                         } else if (clickCount === 2) {
                             clearTimeout(clickTimer);
                             clickCount = 0;
-                            const w = window.innerWidth;
-                            if (t.clientX < w / 4) {
-                                this.handleDoubleTapSkip('rewind', t.clientX, t.clientY);
-                            } else if (t.clientX > w * 3 / 4) {
-                                this.handleDoubleTapSkip('forward', t.clientX, t.clientY);
-                            } else {
+                            if (isCenterTap(t.clientX, t.clientY)) {
                                 this.handleDoubleTap(t.clientX, t.clientY);
+                            } else {
+                                this.showInterfaceTemp();
                             }
                         }
                     }
@@ -4195,7 +3710,7 @@
                 container.style.webkitUserSelect = 'none';
 
                 container.addEventListener('contextmenu', (e) => {
-                    if (e.target.closest('.touch-layer') || e.target.tagName.toLowerCase() === 'video') {
+                    if (e.target.closest('.photo-frame') || e.target.tagName.toLowerCase() === 'img') {
                         e.preventDefault();
                     }
                 });
@@ -4210,8 +3725,6 @@
                 });
                 container.addEventListener('touchcancel', () => { 
                     gestureActive = false; 
-                    state = 'IDLE'; 
-                    resetSpeed();
                 });
 
                 let isMouseDown = false;
@@ -4236,51 +3749,6 @@
                 container.addEventListener('mouseup', mouseEndHandler);
                 container.addEventListener('mouseleave', (e) => {
                     mouseEndHandler(e);
-                    resetSpeed();
-                });
-                window.addEventListener('blur', resetSpeed);
-            }
-
-            async handleDoubleTapSkip(direction, x, y) {
-                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                const v = document.getElementById(`video-p${slideIdx}`);
-                if (!v || !v.duration) return;
-
-                const isRewind = direction === 'rewind';
-                if (isRewind) {
-                    v.currentTime = Math.max(0, v.currentTime - 15);
-                } else {
-                    v.currentTime = Math.min(v.duration, v.currentTime + 15);
-                }
-                this.showInterfaceTemp();
-
-                const bubble = document.createElement('div');
-                bubble.innerHTML = `
-                    <div class="flex flex-col items-center justify-center bg-black/40 backdrop-blur-md text-white rounded-full w-[80px] h-[80px] shadow-2xl space-y-1">
-                        <div class="flex items-center justify-center">
-                            ${isRewind ? '<i data-lucide="chevrons-left" class="w-6 h-6"></i>' : '<i data-lucide="chevrons-right" class="w-6 h-6"></i>'}
-                        </div>
-                        <span class="text-xs font-bold leading-none">15s</span>
-                    </div>
-                `;
-                bubble.className = 'absolute pointer-events-none z-50 transform pointer-events-none transition-all duration-300 ease-out flex items-center justify-center';
-                bubble.style.top = `${Math.max(80, Math.min(y - 40, window.innerHeight - 80))}px`;
-                if (isRewind) bubble.style.left = '20px';
-                else bubble.style.right = '20px';
-                bubble.style.opacity = '0';
-                bubble.style.transform = `scale(0.8) ${isRewind ? 'translateX(-20px)' : 'translateX(20px)'}`;
-
-                document.getElementById('app').appendChild(bubble);
-                lucide.createIcons({ root: bubble });
-
-                requestAnimationFrame(() => {
-                    bubble.style.transform = 'scale(1) translateX(0)';
-                    bubble.style.opacity = '1';
-                    setTimeout(() => {
-                        bubble.style.transform = `scale(0.8) ${isRewind ? 'translateX(-20px)' : 'translateX(20px)'}`;
-                        bubble.style.opacity = '0';
-                        setTimeout(() => bubble.remove(), 300);
-                    }, 400);
                 });
             }
 
@@ -4295,21 +3763,21 @@
                 heart.addEventListener('animationend', () => heart.remove());
 
                 // 2. 自动标记收藏（如未收藏则添加）
-                const currentVideo = this.state.videos[this.state.currentIndex];
-                if (currentVideo && !currentVideo.UserData?.IsFavorite) {
+                const currentPhoto = this.state.videos[this.state.currentIndex];
+                if (currentPhoto && !currentPhoto.UserData?.IsFavorite) {
                     try {
                         const { server, token, userId } = this.config;
-                        const res = await fetch(`${server}/emby/Users/${userId}/FavoriteItems/${currentVideo.Id}?api_key=${token}`, {
+                        const res = await fetch(`${server}/emby/Users/${userId}/FavoriteItems/${currentPhoto.Id}?api_key=${token}`, {
                             method: 'POST',
                             headers: {
                                 'X-Emby-Authorization': `Emby Client="EmbyX", Device="${this.config.deviceName}", DeviceId="${this.config.deviceId}", Version="${this.config.appVersion}"${token ? `, Token="${token}"` : ''}`
                             }
                         });
                         if (res.ok) {
-                            if (!currentVideo.UserData) currentVideo.UserData = {};
-                            currentVideo.UserData.IsFavorite = true;
+                            if (!currentPhoto.UserData) currentPhoto.UserData = {};
+                            currentPhoto.UserData.IsFavorite = true;
                             // 同步到本地 Set
-                            this.state.favorites.add(String(currentVideo.Id));
+                            this.state.favorites.add(String(currentPhoto.Id));
 
                             // 高亮右侧收藏图标
                             const favBtn = document.getElementById('favoriteBtn');
@@ -4325,6 +3793,7 @@
 
             // --- 通用辅助 ---
             toggleModal(id, show) {
+                if (show) this.clearSlideshowTimer();
                 const el = document.getElementById(id);
                 if (id === 'profilePage') {
                     if (show) { el.classList.add('active'); this.state.currentTab = 'my'; }
@@ -4351,6 +3820,7 @@
 
                 // 核心逻辑：无论打开还是关闭弹窗，都调用 showInterfaceTemp
                 this.showInterfaceTemp();
+                if (!show) this.scheduleSlideshow();
             }
 
             toggleLoading(show) {
@@ -4374,13 +3844,6 @@
                 t.textContent = msg;
                 t.classList.remove('opacity-0');
                 this._toastTimer = setTimeout(() => t.classList.add('opacity-0'), duration);
-            }
-
-            formatTime(s) {
-                if (!s) return '00:00';
-                const m = Math.floor(s / 60);
-                const sec = Math.floor(s % 60);
-                return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
             }
 
             escapeHtml(str) {

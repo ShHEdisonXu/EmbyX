@@ -88,6 +88,7 @@
             .interface-hidden .bottom-info,
             .interface-hidden .bottom-nav,
             .interface-hidden .right-toolbar,
+            .interface-hidden #bottomScrim,
             .interface-hidden #fullscreenBtn,
             .interface-hidden #deleteBtn {
                 @apply opacity-0 pointer-events-none transition-opacity duration-300;
@@ -112,6 +113,22 @@
             }
             .profile-layer.active {
                 @apply translate-y-0;
+            }
+            #videoTitle, #videoDescription {
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8), 0 0 1px rgba(0, 0, 0, 0.5) !important;
+            }
+            #videoDescriptionScroll::-webkit-scrollbar {
+                width: 4px;
+            }
+            #videoDescriptionScroll::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            #videoDescriptionScroll::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.25);
+                border-radius: 9999px;
+            }
+            #videoDescriptionScroll {
+                scrollbar-gutter: stable;
             }
 
             /* 进度条 */
@@ -293,13 +310,17 @@
             </div>
         </div>
 
+        <!-- 底部渐变黑影遮罩 (Scrim) -->
+        <div class="absolute bottom-0 left-0 right-0 h-[280px] bg-gradient-to-t from-black/60 via-black/20 to-transparent z-10 pointer-events-none transition-opacity duration-300" id="bottomScrim"></div>
+
         <div
             class="bottom-info absolute bottom-20 left-4 right-4 z-20 transition-opacity duration-300 pointer-events-none">
-            <div class="mb-3 w-[85%] pr-4">
+            <div id="metaInfoContainer" class="mb-3 w-[85%] pr-4 pointer-events-auto transition-all duration-300">
                 <h3 id="videoTitle" class="text-white text-lg font-medium mb-1 drop-shadow-md truncate pointer-events-auto cursor-pointer hover:underline inline-block max-w-full">正在初始化...</h3>
-                <div id="videoDescriptionArea" class="pointer-events-auto cursor-pointer">
-                    <p id="videoDescription" class="text-gray-200 text-sm line-clamp-2 drop-shadow-md opacity-90 transition-all">
-                        请点击右下角“个人中心”配置服务器</p>
+                <div id="videoDescriptionArea" class="pointer-events-auto cursor-pointer transition-all duration-300">
+                    <div id="videoDescriptionScroll">
+                        <p id="videoDescription" class="text-gray-200 text-sm line-clamp-2 drop-shadow-md opacity-90 transition-all break-all whitespace-pre-wrap">请点击右下角"个人中心"配置服务器</p>
+                    </div>
                 </div>
             </div>
 
@@ -314,7 +335,7 @@
         </div>
 
         <div
-            class="bottom-nav absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-sm z-30 transition-opacity duration-300 pb-2 pt-1">
+            class="bottom-nav absolute bottom-0 left-0 right-0 bg-black/25 backdrop-blur-md border-t border-white/5 z-30 transition-opacity duration-300 pb-2 pt-1">
             <div class="flex justify-around items-center h-12">
                 <div id="viewModeBtn" class="nav-btn text-gray-400">
                     <i data-lucide="layout-grid" class="stroke-current w-5 h-5"></i>
@@ -549,33 +570,34 @@
                                     <a href="https://space.bilibili.com/765334" target="_blank"
                                         class="flex items-center justify-center text-[#FB7299] bg-[#FB7299]/10 hover:bg-[#FB7299]/20 px-3 h-11 rounded-full transition-colors border border-[#FB7299]/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/bilibili/FB7299"
-                                            class="w-3.5 h-3.5 mr-1.5" alt="Bilibili" /> B 站·教程</a>
+                                            class="w-3.5 h-3.5 mr-1.5" alt="Bilibili" /> B 站 · 教程</a>
                                     <a href="https://xhslink.com/m/7JytoZm2Rpl" target="_blank"
                                         class="flex items-center justify-center text-[#FF2442] bg-[#FF2442]/10 hover:bg-[#FF2442]/20 px-3 h-11 rounded-full transition-colors border border-[#FF2442]/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/xiaohongshu/FF2442"
-                                            class="w-3.5 h-3.5 mr-1.5" alt="Xiaohongshu" /> 小红书·攻略</a>
+                                            class="w-3.5 h-3.5 mr-1.5" alt="Xiaohongshu" /> 小红书 · 攻略</a>
                                     <a href="https://qm.qq.com/q/KhRMpYLnGi" target="_blank"
                                         class="flex items-center justify-center text-[#12B7F5] bg-[#12B7F5]/10 hover:bg-[#12B7F5]/20 px-3 h-11 rounded-full transition-colors border border-[#12B7F5]/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/qq/12B7F5" class="w-3.5 h-3.5 mr-1.5"
-                                            alt="QQ" /> QQ 群·催更</a>
+                                            alt="QQ" /> QQ 群 · 催更</a>
                                     <a href="https://github.com/juneix/EmbyX/blob/main/README_zh.md" target="_blank"
                                         class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 h-11 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap active:scale-95">
                                         <img src="https://cdn.simpleicons.org/github/white" class="w-3.5 h-3.5 mr-1.5"
                                             alt="GitHub" /> GitHub · 加星</a>
                                 </div>
-                                <!-- 打赏区 -->
-                                <div class="rounded-2xl border border-white/10 bg-white/5 py-5 px-0 text-center mt-4">
-                                    <p class="text-gray-400 text-xs font-medium mb-4">☕ 打赏鼓励，支持我开发更多有趣应用～</p>
-                                    <div class="flex justify-center gap-5">
-                                        <a href="weixin://profile/gh_86f7c0a73738" class="flex flex-col items-center gap-2">
-                                            <img src="wechat.webp" alt="微信" class="w-[140px] h-[140px] rounded-xl object-cover border border-white/10">
-                                            <span class="text-[10px] text-gray-400/60">微信</span>
-                                        </a>
-                                        <a href="alipays://platformapi/startapp?saId=10000007&clientVersion=3.7.0.0718&qrcode=https%3A%2F%2Fqr.alipay.com%2Ffkx15248wilbz2ddz96og40" class="flex flex-col items-center gap-2">
-                                            <img src="alipay.webp" alt="支付宝" class="w-[140px] h-[140px] rounded-xl object-cover border border-white/10">
-                                            <span class="text-[10px] text-gray-400/60">支付宝</span>
-                                        </a>
-                                    </div>
+                            </div>
+
+                            <!-- 打赏区 -->
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-6 text-center mt-4">
+                                <p class="text-gray-400 text-xs font-medium mb-4">☕ 打赏鼓励，支持我开发更多有趣应用～</p>
+                                <div class="flex justify-center gap-6">
+                                    <a href="weixin://profile/gh_86f7c0a73738" class="flex flex-col items-center gap-2 flex-1 min-w-0">
+                                        <img src="wechat.webp" alt="微信" class="w-full max-w-[160px] aspect-square rounded-xl object-cover border border-white/10">
+                                        <span class="text-[10px] text-gray-400/60">微信</span>
+                                    </a>
+                                    <a href="alipays://platformapi/startapp?saId=10000007&clientVersion=3.7.0.0718&qrcode=https%3A%2F%2Fqr.alipay.com%2Ffkx15248wilbz2ddz96og40" class="flex flex-col items-center gap-2 flex-1 min-w-0">
+                                        <img src="alipay.webp" alt="支付宝" class="w-full max-w-[160px] aspect-square rounded-xl object-cover border border-white/10">
+                                        <span class="text-[10px] text-gray-400/60">支付宝</span>
+                                    </a>
                                 </div>
                             </div>
 
@@ -841,7 +863,7 @@
             cacheDOM() {
                 const ids = [
                     'videoContainer', 'clickToPlayOverlay', 'loading', 'toast',
-                    'videoDescriptionArea', 'videoTitle', 'videoDescription', 'progressLine', 'currentTime', 'totalTime',
+                    'metaInfoContainer', 'videoTitle', 'videoDescriptionArea', 'videoDescriptionScroll', 'videoDescription', 'progressLine', 'currentTime', 'totalTime',
                     'playModeBtn', 'viewModeBtn', 'libraryBtn', 'myBtn',
                     'favoriteBtn', 'addToPlaylistBtn', 'scaleBtn', 'muteBtn', 'fullscreenBtn', 'deleteBtn',
                     'mediaInfoModal', 'mediaInfoContent', 'closeMediaInfoBtn',
@@ -1939,6 +1961,7 @@
                 if (!btn || !img) return;
 
                 btn.classList.add('hidden');
+                this.recalculateMetaInfoHeight();
                 if (!videoData || !videoData.Id) return;
 
                 const currentId = String(videoData.Id);
@@ -1967,6 +1990,7 @@
                             btn.dataset.personName = person.Name;
                             img.src = `${server}/emby/Persons/${encodeURIComponent(person.Name)}/Images/Primary?api_key=${token}`;
                             btn.classList.remove('hidden');
+                            this.recalculateMetaInfoHeight();
                         }
                     }
                 } catch (e) {
@@ -3051,13 +3075,64 @@
 
             // --- UI 更新与交互 ---
 
+            getMetaHeightLimitElement() {
+                const personBtn = document.getElementById('personBtn');
+                if (personBtn && !personBtn.classList.contains('hidden') && personBtn.offsetParent !== null) {
+                    return personBtn.querySelector('div') || personBtn;
+                }
+                return Array.from(document.querySelectorAll('.right-toolbar > div'))
+                    .find(el => !el.classList.contains('hidden') && el.offsetParent !== null);
+            }
+
+            collapseMetaInfo() {
+                const { videoTitle, videoDescription, videoDescriptionArea, videoDescriptionScroll } = this.dom;
+                if (!videoTitle || !videoDescription || !videoDescriptionArea || !videoDescriptionScroll) return;
+
+                videoTitle.classList.add('truncate');
+                videoTitle.classList.remove('whitespace-normal', 'break-all');
+                videoDescription.classList.add('line-clamp-2');
+                videoDescriptionArea.classList.remove('bg-black/60', 'backdrop-blur-md', 'rounded-xl', 'border', 'border-white/10', 'shadow-lg', 'overflow-hidden', 'mt-2');
+                videoDescriptionScroll.classList.remove('overflow-y-auto', 'overflow-x-hidden', 'overscroll-contain', 'my-[10px]', 'ml-3', 'mr-1', 'pr-3');
+                videoDescriptionArea.style.maxHeight = '';
+                videoDescriptionScroll.style.maxHeight = '';
+                videoDescriptionScroll.scrollTop = 0;
+            }
+
+            expandMetaInfo() {
+                const { videoTitle, videoDescription, videoDescriptionArea, videoDescriptionScroll } = this.dom;
+                if (!videoTitle || !videoDescription || !videoDescriptionArea || !videoDescriptionScroll) return;
+
+                videoDescription.classList.remove('line-clamp-2');
+                videoTitle.classList.remove('truncate');
+                videoTitle.classList.add('whitespace-normal', 'break-all');
+                videoDescriptionArea.classList.add('bg-black/60', 'backdrop-blur-md', 'rounded-xl', 'border', 'border-white/10', 'shadow-lg', 'overflow-hidden', 'mt-2');
+                videoDescriptionScroll.classList.add('overflow-y-auto', 'overflow-x-hidden', 'overscroll-contain', 'my-[10px]', 'ml-3', 'mr-1', 'pr-3');
+                this.recalculateMetaInfoHeight();
+            }
+
+            recalculateMetaInfoHeight() {
+                const { metaInfoContainer, videoTitle, videoDescription, videoDescriptionArea, videoDescriptionScroll } = this.dom;
+                if (!metaInfoContainer || !videoTitle || !videoDescription || !videoDescriptionArea || !videoDescriptionScroll) return;
+                if (videoDescription.classList.contains('line-clamp-2')) return;
+
+                const limitEl = this.getMetaHeightLimitElement();
+                const limitTop = limitEl ? limitEl.getBoundingClientRect().top : 0;
+                const metaRect = metaInfoContainer.getBoundingClientRect();
+                const titleRect = videoTitle.getBoundingClientRect();
+                const areaRect = videoDescriptionArea.getBoundingClientRect();
+                const titleGap = Math.max(0, areaRect.top - titleRect.bottom);
+                const cardMaxHeight = Math.max(0, Math.floor(metaRect.bottom - limitTop - titleRect.height - titleGap));
+                const scrollMaxHeight = Math.max(0, cardMaxHeight - 22);
+
+                videoDescriptionArea.style.maxHeight = `${cardMaxHeight}px`;
+                videoDescriptionScroll.style.maxHeight = `${scrollMaxHeight}px`;
+            }
+
             updateUI() {
                 const item = this.state.videos[this.state.currentIndex];
                 if (item) {
                     this.dom.videoTitle.textContent = item.Name;
-                    this.dom.videoTitle.classList.add('truncate');
-                    this.dom.videoTitle.classList.remove('whitespace-normal', 'break-all');
-                    this.dom.videoDescription.classList.add('line-clamp-2');
+                    this.collapseMetaInfo();
                     
                     let overviewText = item.Overview || '暂无简介';
                     let rawTags = [];
@@ -3447,6 +3522,9 @@
                     this.dom.clickToPlayOverlay.style.display = 'none';
                     this.playVideo(this.state.currentIndex);
                 };
+                const recalcMetaInfo = () => this.recalculateMetaInfoHeight();
+                window.addEventListener('resize', recalcMetaInfo);
+                window.addEventListener('orientationchange', recalcMetaInfo);
 
                 this.dom.favoriteBtn.onclick = (e) => {
                     e.stopPropagation();
@@ -3532,16 +3610,10 @@
                         this.filterByTag(tagEl.dataset.tag);
                         return;
                     }
-                    const descEl = this.dom.videoDescription;
-                    const titleEl = this.dom.videoTitle;
-                    if (descEl.classList.contains('line-clamp-2')) {
-                        descEl.classList.remove('line-clamp-2');
-                        titleEl.classList.remove('truncate');
-                        titleEl.classList.add('whitespace-normal', 'break-all');
+                    if (this.dom.videoDescription.classList.contains('line-clamp-2')) {
+                        this.expandMetaInfo();
                     } else {
-                        descEl.classList.add('line-clamp-2');
-                        titleEl.classList.add('truncate');
-                        titleEl.classList.remove('whitespace-normal', 'break-all');
+                        this.collapseMetaInfo();
                     }
                 };
 
