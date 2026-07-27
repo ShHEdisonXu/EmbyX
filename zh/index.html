@@ -651,6 +651,10 @@
     </div>
 
     <script>
+        // ═══════════════════════════════════════
+        // § 0. 工具函数
+        // ═══════════════════════════════════════
+
         // Jellyfin 前缀兼容拦截
         function enableJellyfinFetchProxy() {
             if (window._jellyfinProxyEnabled) return;
@@ -671,6 +675,10 @@
             }
             return url;
         }
+
+        // ═══════════════════════════════════════
+        // § 1. EmbyApp 类 — 构造与基础方法
+        // ═══════════════════════════════════════
 
         class EmbyApp {
             constructor() {
@@ -756,7 +764,7 @@
                 });
             }
 
-            // --- 初始化 ---
+            // ═══ 初始化 ═══
             init() {
                 this.cacheDOM();
                 this.loadConfig();
@@ -875,7 +883,7 @@
                 this.dom.rightToolbar = document.querySelector('.right-toolbar');
             }
 
-            // --- 配置与数据管理 ---
+            // ═══ 配置与认证 ═══
             loadConfig() {
                 this.config.server = localStorage.getItem('emby_server') || '';
                 this.config.user = localStorage.getItem('emby_user') || '';
@@ -1145,6 +1153,8 @@
                 }
             }
 
+            // ═══ 数据管理 ═══
+
             async loadFavorites() {
                 const { server, token, userId } = this.config;
                 if (!server || !token || !userId) {
@@ -1207,7 +1217,7 @@
                 } catch(e) {}
             }
 
-            // --- 核心播放逻辑 ---
+            // ═══ 核心播放逻辑 ═══
             async fetchVideos(parentId = null, ids = null, isLoadMore = false, isRandom = false, isAppend = false, searchTerm = '') {
                 this.toggleLoading(!isAppend); // 追加时不显示全屏 loading
                 try {
@@ -1751,7 +1761,7 @@
                 lucide.createIcons();
             }
 
-            // 缓冲渲染逻辑
+            // ═══ 缓冲与播放控制 ═══
             renderBuffer() {
                 if (this.state.viewMode !== 'stream' || !this.dom.slides) return;
 
@@ -2383,7 +2393,7 @@
                 }).catch(() => { });
             }
 
-            // --- 续播与同步逻辑 (方案 A: DisplayPreferences) ---
+            // ═══ 续播与云同步 ═══
 
             async saveCloudSync(itemId, libId, libType, date) {
                 try {
@@ -2587,6 +2597,8 @@
                 }
                 return fallbackUrl;
             }
+
+            // ═══ UI 组件 ═══
 
             renderLibraryItems(playlistsData, viewsDataRaw) {
                 const list = document.getElementById('librariesList');
@@ -3084,6 +3096,8 @@
                     .find(el => !el.classList.contains('hidden') && el.offsetParent !== null);
             }
 
+            // ═══ 信息面板与视图控制 ═══
+
             collapseMetaInfo() {
                 const { videoTitle, videoDescription, videoDescriptionArea, videoDescriptionScroll } = this.dom;
                 if (!videoTitle || !videoDescription || !videoDescriptionArea || !videoDescriptionScroll) return;
@@ -3426,6 +3440,8 @@
                 lucide.createIcons();
             }
 
+
+            // ═══ 流媒体详情 ═══
 
             async showMediaInfo() {
                 const item = this.state.videos[this.state.currentIndex];
@@ -3845,6 +3861,8 @@
                     }
                 });
             }
+
+            // ═══ 输入处理（键盘/手势）═══
 
             bindKeyboard() {
                 let okClickCount = 0;
@@ -4464,6 +4482,8 @@
                 // 核心逻辑：无论打开还是关闭弹窗，都调用 showInterfaceTemp
                 this.showInterfaceTemp();
             }
+
+            // ═══ 工具方法 ═══
 
             toggleLoading(show) {
                 const el = this.dom.loading;
