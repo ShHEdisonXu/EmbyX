@@ -1,5 +1,5 @@
 <!--
-  EmbyX - Short Video Player for Emby
+  EmbyX - Photo Gallery for Emby
   Juneix (https://github.com/juneix)
   © 2026 All Rights Reserved
 -->
@@ -48,10 +48,6 @@
     </script>
     <style type="text/tailwindcss">
         @layer utilities {
-            .video-fullscreen {
-                @apply w-full h-full absolute inset-0 z-10;
-            }
-            
             .slide-container {
                 @apply relative w-screen overflow-hidden bg-black;
                 height: 100dvh;
@@ -146,14 +142,6 @@
                 filter: drop-shadow(0 0 6px rgba(82, 181, 75, 0.6));
             }
 
-            /* Hide ugly default play button in some Android WebViews */
-            video::-webkit-media-controls-start-playback-button {
-                display: none !important;
-                -webkit-appearance: none;
-            }
-            video::-webkit-media-controls {
-                display: none !important;
-            }
         }
     </style>
 </head>
@@ -162,17 +150,6 @@
     <div id="app" class="slide-container">
 
         <div id="videoContainer" class="relative w-full h-full">
-        </div>
-
-        <div id="clickToPlayOverlay"
-            class="absolute inset-0 z-50 flex items-center justify-center bg-black/40 cursor-pointer"
-            style="display:none;">
-            <div class="text-center">
-                <div class="w-20 h-20 bg-black/50 rounded-full flex items-center justify-center animate-pulse mx-auto">
-                    <i data-lucide="play" class="text-white text-3xl"></i>
-                </div>
-                <p class="text-white text-lg mt-4 font-medium">Tap to Play</p>
-            </div>
         </div>
 
         <div
@@ -201,12 +178,6 @@
             <div class="flex flex-col items-center cursor-pointer active:scale-90 transition-transform" id="scaleBtn">
                 <div class="w-12 h-12 flex items-center justify-center">
                     <i data-lucide="maximize-2" class="stroke-white w-6 h-6 drop-shadow-md"></i>
-                </div>
-            </div>
-
-            <div class="flex flex-col items-center cursor-pointer active:scale-90 transition-transform" id="muteBtn">
-                <div class="w-12 h-12 flex items-center justify-center">
-                    <i data-lucide="volume-2" class="stroke-white w-6 h-6 drop-shadow-md"></i>
                 </div>
             </div>
 
@@ -281,14 +252,6 @@
                 </div>
             </div>
 
-            <div class="relative h-1 bg-white/30 cursor-pointer pointer-events-auto mb-1 hidden" id="progressBarContainer">
-                <div id="progressLine" class="progress-line w-0"></div>
-            </div>
-
-            <div class="flex justify-between text-xs text-gray-300 drop-shadow hidden">
-                <span id="currentTime">00:00</span>
-                <span id="totalTime">00:00</span>
-            </div>
         </div>
 
         <div
@@ -349,39 +312,13 @@
                                         class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
                                 </div>
                             </div>
-                            <div id="rowStatic" tabindex="0"
-                                class="focusable-item flex items-center justify-between py-2.5 px-3 bg-gray-900/40 rounded-lg border border-transparent hover:bg-gray-800/60 transition-all cursor-pointer group"
-                                onclick="document.getElementById('configStatic').click();">
-                                <label for="configStatic" class="text-gray-300 text-sm cursor-pointer flex-1">Direct
-                                    Play (No Transcoding)</label>
-                                <input type="checkbox" id="configStatic"
-                                    class="rounded text-primary bg-gray-700 border-none w-4 h-4 pointer-events-none"
-                                    checked>
-                            </div>
                             <div id="rowAutoplay" tabindex="0"
                                 class="focusable-item flex items-center justify-between py-2.5 px-3 bg-gray-900/40 rounded-lg border border-transparent hover:bg-gray-800/60 transition-all cursor-pointer group"
                                 onclick="document.getElementById('configAutoplay').click();">
-                                <label for="configAutoplay" class="text-gray-300 text-sm cursor-pointer flex-1">Auto
-                                    Play Next</label>
+                                <label for="configAutoplay" class="text-gray-300 text-sm cursor-pointer flex-1">Auto slideshow</label>
                                 <input type="checkbox" id="configAutoplay"
                                     class="rounded text-primary bg-gray-700 border-none w-4 h-4 pointer-events-none"
                                     checked>
-                            </div>
-                            <div id="rowShortDrama" tabindex="0"
-                                class="focusable-item flex items-center justify-between py-2.5 px-3 bg-gray-900/40 rounded-lg border border-transparent hover:bg-gray-800/60 transition-all cursor-pointer group"
-                                onclick="document.getElementById('configShortDrama').click();">
-                                <label for="configShortDrama" class="text-gray-300 text-sm cursor-pointer flex-1">Short
-                                    Drama Mode</label>
-                                <input type="checkbox" id="configShortDrama"
-                                    class="rounded text-primary bg-gray-700 border-none w-4 h-4 pointer-events-none">
-                            </div>
-                            <div id="rowLiveAutoplay" tabindex="0"
-                                class="focusable-item flex items-center justify-between py-2.5 px-3 bg-gray-900/40 rounded-lg border border-transparent hover:bg-gray-800/60 transition-all cursor-pointer group"
-                                onclick="document.getElementById('configLiveAutoplay').click();">
-                                <label for="configLiveAutoplay" class="text-gray-300 text-sm cursor-pointer flex-1">Autoplay Live Photo
-                                </label>
-                                <input type="checkbox" id="configLiveAutoplay"
-                                    class="rounded text-primary bg-gray-700 border-none w-4 h-4 pointer-events-none">
                             </div>
                             <div id="rowDeleteMode" tabindex="0"
                                 class="focusable-item flex items-center justify-between py-2.5 px-3 bg-gray-900/40 rounded-lg border border-transparent hover:bg-gray-800/60 transition-all cursor-pointer group"
@@ -440,54 +377,18 @@
                             </div>
 
                             <div>
-                                <h4 class="text-gray-300">🔮 Playback</h4>
+                                <h4 class="text-gray-300">Photo Gallery</h4>
                                 <ul class="list-disc list-inside space-y-1 text-gray-400 text-xs mt-2">
-                                    <li>Native HTML5 player, best on modern devices.</li>
-                                    <li>Older devices can use server transcoding.</li>
+                                    <li>Only items indexed by Emby as photos are displayed.</li>
+                                    <li>Live Photo companion videos and regular videos are ignored.</li>
                                 </ul>
-                                <div class="bg-black/40 rounded-lg overflow-hidden border border-gray-700/50 mt-3">
-                                    <table class="w-full text-center text-[11px] leading-tight border-collapse">
-                                        <thead class="bg-gray-700/30 text-gray-400">
-                                            <tr>
-                                                <th class="px-2 py-1.5 border-r border-gray-700/50 font-medium">Device
-                                                </th>
-                                                <th class="px-2 py-1.5 border-r border-gray-700/50 font-medium">HEVC
-                                                    Decode
-                                                </th>
-                                                <th class="px-2 py-1.5 font-medium">AV1 Decode</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-gray-700/50 text-gray-400">
-                                            <tr>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50 text-primary">
-                                                    Apple</td>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50">A9 (2015) / M1</td>
-                                                <td class="px-2 py-1.5">A17 Pro (2023) / M3</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50 text-primary">
-                                                    Android</td>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50">Budget Phones (2016)
-                                                </td>
-                                                <td class="px-2 py-1.5">Budget Phones (2024)</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50 text-primary">
-                                                    PC</td>
-                                                <td class="px-2 py-1.5 border-r border-gray-700/50">Intel 6th-8th Gen
-                                                    iGPU</td>
-                                                <td class="px-2 py-1.5">Intel 11th Gen iGPU</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
                             </div>
 
                             <div>
                                 <h4 class="text-gray-300">🧩 Tips & Tricks</h4>
                                 <ul class="list-disc list-inside space-y-1 text-gray-400 text-xs mt-2">
-                                    <li>Faster Importing: Use "Home Video" library type.</li>
-                                    <li>Smoother Loading: Limit libraries to < 1,000 videos.</li>
+                                    <li>Use an Emby photo library for predictable filtering.</li>
+                                    <li>Smoother Loading: Keep each photo library reasonably sized.</li>
                                     <li>Easier Managing: Use multiple libraries and playlists.</li>
                                     <li>PWA Support: Add to Home Screen or Install as App. 📲</li>
                                 </ul>
@@ -507,29 +408,25 @@
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">W / S /
                                                     ↑ / ↓</td>
-                                                <td class="px-3 py-1.5">Prev / Next Video</td>
+                                                <td class="px-3 py-1.5">Previous / Next Photo</td>
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">A / D /
                                                     ← / →</td>
-                                                <td class="px-3 py-1.5">Rewind / Forward 15s</td>
+                                                <td class="px-3 py-1.5">Previous / Next Photo</td>
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">Space /
                                                     Click OK</td>
-                                                <td class="px-3 py-1.5">Pause / Play</td>
+                                                <td class="px-3 py-1.5">Pause / Resume Slideshow</td>
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">U / Double Click OK</td>
-                                                <td class="px-3 py-1.5">Favorite Video</td>
+                                                <td class="px-3 py-1.5">Favorite Photo</td>
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">J / Menu Key</td>
                                                 <td class="px-3 py-1.5">Toggle Aspect Ratio</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">M</td>
-                                                <td class="px-3 py-1.5">Toggle Mute</td>
                                             </tr>
                                             <tr>
                                                 <td class="px-3 py-1.5 text-primary border-r border-gray-700/50">I / Tab 4</td>
@@ -654,7 +551,7 @@
                 this.state = {
                     videos: [],
                     currentIndex: 0,
-                    isPlaying: false,
+                    isSlideshowPaused: false,
                     favorites: new Set(),
                     playMode: 'sequence',
                     viewMode: 'stream',
@@ -662,12 +559,7 @@
                     currentTab: 'home',
                     currentLibraryId: null,
                     isScaleFill: true,
-                    isMuted: false,
-                    lastReportTime: 0,
-                    playSessionId: null,
-                    playbackMethod: 'DirectPlay',
                     originalVideos: [],
-                    _capabilitiesReported: false,
                     _hitokotoCache: null,
                     currentPerson: null,
                     isFilteredByPerson: false,
@@ -681,9 +573,10 @@
                     isFilteredByTag: false
                 };
 
-                this.config = { server: '', user: '', token: '', userId: '', useStatic: true, autoplay: true, shortDrama: false, deleteMode: false };
+                this.config = { server: '', user: '', token: '', userId: '', autoplay: true, deleteMode: false };
 
                 this.csTimer = null;
+                this.slideshowTimer = null;
 
                 this.dom = {};
                 this.config.deviceName = this.getDeviceName();
@@ -742,11 +635,6 @@
                 this.state.isAutoplay = this.config.autoplay !== false;
 
                 // Sync UI based on loaded stated
-                if (this.dom.muteBtn) {
-                    const iconName = this.state.isMuted ? 'volume-x' : 'volume-2';
-                    const iconColor = this.state.isMuted ? 'text-secondary' : 'stroke-white';
-                    this.dom.muteBtn.innerHTML = `<div class="w-12 h-12 flex items-center justify-center"><i data-lucide="${iconName}" class="${iconColor} w-6 h-6 drop-shadow-md"></i></div>`;
-                }
                 if (this.dom.scaleBtn) {
                     this.dom.scaleBtn.innerHTML = `<div class="w-12 h-12 flex items-center justify-center"><i data-lucide="${this.state.isScaleFill ? 'maximize-2' : 'minimize-2'}" class="stroke-white w-6 h-6 drop-shadow-md"></i></div>`;
                 }
@@ -828,13 +716,13 @@
 
             cacheDOM() {
                 const ids = [
-                    'videoContainer', 'clickToPlayOverlay', 'loading', 'toast',
-                    'metaInfoContainer', 'videoTitle', 'videoDescriptionArea', 'videoDescriptionScroll', 'videoDescription', 'progressLine', 'currentTime', 'totalTime',
+                    'videoContainer', 'loading', 'toast',
+                    'metaInfoContainer', 'videoTitle', 'videoDescriptionArea', 'videoDescriptionScroll', 'videoDescription',
                     'playModeBtn', 'viewModeBtn', 'libraryBtn', 'myBtn',
-                    'favoriteBtn', 'addToPlaylistBtn', 'scaleBtn', 'muteBtn', 'fullscreenBtn', 'deleteBtn',
+                    'favoriteBtn', 'addToPlaylistBtn', 'scaleBtn', 'fullscreenBtn', 'deleteBtn',
                     'mediaInfoModal', 'mediaInfoContent', 'closeMediaInfoBtn',
                     'deleteConfirmModal', 'confirmDeleteBtn', 'cancelDeleteBtn', 'deleteFileName',
-                    'configServer', 'configUser', 'configPwd', 'configStatic', 'configAutoplay', 'configShortDrama', 'configDeleteMode'
+                    'configServer', 'configUser', 'configPwd', 'configAutoplay', 'configDeleteMode'
                 ];
                 ids.forEach(id => this.dom[id] = document.getElementById(id));
                 this.dom.rightToolbar = document.querySelector('.right-toolbar');
@@ -845,9 +733,7 @@
                 this.config.user = localStorage.getItem('emby_user') || '';
                 this.config.token = localStorage.getItem('emby_token') || '';
                 this.config.userId = localStorage.getItem('emby_uid') || '';
-                this.config.useStatic = localStorage.getItem('emby_static') !== 'false';
-                this.config.autoplay = localStorage.getItem('emby_autoplay') !== 'false';
-                this.config.shortDrama = localStorage.getItem('emby_shortdrama') === 'true';
+                this.config.autoplay = localStorage.getItem('emby_pic_autoplay') !== 'false';
                 this.config.deleteMode = localStorage.getItem('emby_delete_mode') === 'true';
 
                 // Unique Device ID for session management
@@ -860,15 +746,11 @@
                 const savedScale = localStorage.getItem('emby_is_scale_fill');
                 if (savedScale !== null) this.state.isScaleFill = savedScale === 'true';
 
-                const savedMute = localStorage.getItem('emby_is_muted');
-                if (savedMute !== null) this.state.isMuted = savedMute === 'true';
-
                 const savedPlayMode = localStorage.getItem('emby_play_mode');
                 if (savedPlayMode !== null) this.state.playMode = savedPlayMode;
-                if (this.config.shortDrama) this.state.playMode = 'sequence';
 
-                const savedLibId = localStorage.getItem('emby_lib_id');
-                const savedLibType = localStorage.getItem('emby_lib_type');
+                const savedLibId = localStorage.getItem('emby_pic_lib_id');
+                const savedLibType = localStorage.getItem('emby_pic_lib_type');
                 if (savedLibId) {
                     this.state.currentLibraryId = savedLibId;
                     this.state.currentLibraryType = savedLibType || 'library';
@@ -883,9 +765,7 @@
                     const pwdLen = parseInt(localStorage.getItem('emby_pwd_len') || '0');
                     this.dom.configPwd.value = '*'.repeat(Math.max(1, pwdLen));
                 }
-                if (this.dom.configStatic) this.dom.configStatic.checked = this.config.useStatic;
                 if (this.dom.configAutoplay) this.dom.configAutoplay.checked = this.config.autoplay;
-                if (this.dom.configShortDrama) this.dom.configShortDrama.checked = this.config.shortDrama;
                 if (this.dom.configDeleteMode) this.dom.configDeleteMode.checked = this.config.deleteMode;
 
                 // Sync UI based on config
@@ -901,9 +781,7 @@
                 const user = this.dom.configUser.value.trim();
                 const pwd = this.dom.configPwd.value.trim();
 
-                const isStatic = this.dom.configStatic.checked;
                 const autoplay = this.dom.configAutoplay.checked;
-                const shortDrama = this.dom.configShortDrama.checked;
                 const deleteMode = this.dom.configDeleteMode.checked;
 
                 if (!server || !user) return this.showToast('Please fill in all fields');
@@ -949,9 +827,7 @@
 
                 try {
                     if (/^\*+$/.test(pwd) && this.config.token && this.config.server === server && this.config.user === user) {
-                        localStorage.setItem('emby_static', isStatic);
-                        localStorage.setItem('emby_autoplay', autoplay);
-                        localStorage.setItem('emby_shortdrama', shortDrama);
+                        localStorage.setItem('emby_pic_autoplay', autoplay);
                         localStorage.setItem('emby_delete_mode', deleteMode);
 
                         // Clear data cache, keep core settings and reload
@@ -984,12 +860,10 @@
                     localStorage.setItem('emby_user', user);
                     localStorage.setItem('emby_token', data.AccessToken);
                     localStorage.setItem('emby_uid', data.SessionInfo.UserId);
-                    localStorage.setItem('emby_static', isStatic);
-                    localStorage.setItem('emby_autoplay', autoplay);
-                    localStorage.setItem('emby_shortdrama', shortDrama);
+                    localStorage.setItem('emby_pic_autoplay', autoplay);
                     localStorage.setItem('emby_delete_mode', deleteMode);
 
-                    this.config = { ...this.config, server, user, token: data.AccessToken, userId: data.SessionInfo.UserId, useStatic: isStatic, autoplay, shortDrama, deleteMode };
+                    this.config = { ...this.config, server, user, token: data.AccessToken, userId: data.SessionInfo.UserId, autoplay, deleteMode };
 
                     const pwdLen = Math.max(1, pwd.length);
                     localStorage.setItem('emby_pwd_len', pwdLen);
@@ -1003,8 +877,8 @@
                     // Clear data cache, keep core settings and reload
                     localStorage.removeItem('emby_views_cache');
                     localStorage.removeItem('emby_favorites');
-                    localStorage.removeItem('emby_lib_id');
-                    localStorage.removeItem('emby_lib_type');
+                    localStorage.removeItem('emby_pic_lib_id');
+                    localStorage.removeItem('emby_pic_lib_type');
                     location.reload();
                 } catch (e) {
                     console.error('saveConfig error:', e);
@@ -1124,13 +998,13 @@
                         fetchStartIndex += this.state.videos.length;
                     }
 
-                    let url = `${server}/emby/Users/${userId}/Items?api_key=${token}&Recursive=true&IncludeItemTypes=Photo,PhotoAlbum,Video&Limit=${PAGE_SIZE}&StartIndex=${fetchStartIndex}&Fields=Overview,Path,RunTimeTicks,MediaSources,Tags,TagItems`;
+                    let url = `${server}/emby/Users/${userId}/Items?api_key=${token}&Recursive=true&IncludeItemTypes=Photo&Limit=${PAGE_SIZE}&StartIndex=${fetchStartIndex}&Fields=Overview,Path,RunTimeTicks,MediaSources,Tags,TagItems`;
 
                     if (searchTerm) {
-                        const sortStr = this.config.shortDrama ? 'SortBy=Path&SortOrder=Ascending' : 'SortBy=DateCreated&SortOrder=Descending';
+                        const sortStr = 'SortBy=DateCreated&SortOrder=Descending';
                         url += `&SearchTerm=${encodeURIComponent(searchTerm)}&${sortStr}`;
                     } else if (this.state.currentTag) {
-                        const sortStr = this.config.shortDrama ? 'SortBy=Path&SortOrder=Ascending' : 'SortBy=DateCreated&SortOrder=Descending';
+                        const sortStr = 'SortBy=DateCreated&SortOrder=Descending';
                         url += `&Tags=${encodeURIComponent(this.state.currentTag)}&${sortStr}`;
                     } else if (this.state.currentPerson) {
                         url += `&Person=${encodeURIComponent(this.state.currentPerson)}`;
@@ -1143,10 +1017,10 @@
                     } else if (libraryId === 'favorites') {
                         url += `&SortBy=DateCreated&SortOrder=Descending&Filters=IsFavorite`;
                     } else if (libraryId) {
-                        const sortStr = this.config.shortDrama ? 'SortBy=Path&SortOrder=Ascending' : 'SortBy=DateCreated&SortOrder=Descending';
+                        const sortStr = 'SortBy=DateCreated&SortOrder=Descending';
                         url += `&${sortStr}&ParentId=${libraryId}`;
                     } else {
-                        const sortStr = this.config.shortDrama ? 'SortBy=Path&SortOrder=Ascending' : 'SortBy=DateCreated&SortOrder=Descending';
+                        const sortStr = 'SortBy=DateCreated&SortOrder=Descending';
                         url += `&${sortStr}`;
                     }
 
@@ -1159,29 +1033,7 @@
                         throw new Error(`Server Error: ${res.status}`);
                     }
                     let data = await res.json();
-                    const rawItems = data.Items || [];
-
-                    const photos = [];
-                    const liveVideosMap = new Map();
-                    rawItems.forEach(item => {
-                        if (item.Type === 'Video') {
-                            const durationSec = (item.RunTimeTicks || 0) / 10000000;
-                            if (durationSec <= 6) {
-                                const baseName = item.Name.split('.')[0];
-                                liveVideosMap.set(baseName, item);
-                            }
-                        }
-                    });
-                    rawItems.forEach(item => {
-                        if (item.Type === 'Photo' || item.Type === 'PhotoAlbum') {
-                            const baseName = item.Name.split('.')[0];
-                            if (liveVideosMap.has(baseName)) {
-                                item.liveVideoItem = liveVideosMap.get(baseName);
-                            }
-                            photos.push(item);
-                        }
-                    });
-                    const items = photos.length > 0 ? photos : rawItems;
+                    const items = data.Items || [];
 
                     if (isAppend) {
                         if (items.length > 0) {
@@ -1190,13 +1042,13 @@
                                 this.state.originalVideos.push(...items);
                             }
                         } else {
-                            if (!isAppend) this.showToast('No more videos');
+                            if (!isAppend) this.showToast('No more photos');
                         }
                         return;
                     }
 
                     if (isLoadMore && items.length === 0) {
-                        this.showToast('No more videos');
+                        this.showToast('No more photos');
                         this.state.startIndex = Math.max(0, (this.state.startIndex || 0));
                         this.toggleLoading(false);
                         return;
@@ -1211,7 +1063,7 @@
                     }
 
                     if (items.length === 0) {
-                        this.showToast('No videos found');
+                        this.showToast('No photos found');
                     }
 
                     if (this.state.playMode === 'random' && items.length > 0) {
@@ -1224,13 +1076,13 @@
                     } else {
                         if (items.length > 0) {
                             this.renderSlides();
-                            this.loadVideo(0);
+                            this.loadPhoto(0);
                         } else {
                             this.renderGridView();
                         }
                     }
                 } catch (e) {
-                    console.error('Failed to fetch videos:', e);
+                    console.error('Failed to fetch photos:', e);
                     this.showToast('Cannot connect to server: ' + (e.message || 'Unknown error'));
                 } finally {
                     this.toggleLoading(false);
@@ -1255,15 +1107,9 @@
                     el.style.display = 'none';
                     el.innerHTML = `
                         <div class="w-full h-full relative bg-black">
-                            <img id="thumb-${i}" class="absolute inset-0 w-full h-full z-0 transition-opacity duration-300 ${this.state.isScaleFill ? 'object-cover' : 'object-contain'}" src="" alt="" />
+                            <img id="thumb-${i}" class="absolute inset-0 w-full h-full z-10 transition-opacity duration-300 ${this.state.isScaleFill ? 'object-cover' : 'object-contain'}" src="" alt="" />
                             <div id="poster-${i}" class="absolute inset-0 bg-cover bg-center scale-[1.15] blur-xl transition-opacity duration-300 z-0 ${this.state.isScaleFill ? 'opacity-0' : 'opacity-70'}"></div>
-                            <div id="overlay-${i}" class="absolute inset-0 bg-black/40 transition-opacity duration-300 z-0 ${this.state.isScaleFill ? 'opacity-0' : 'opacity-100'}"></div>
-                            
-                            <video id="video-p${i}"
-                                class="video-fullscreen ${this.state.isScaleFill ? 'object-cover' : 'object-contain'} opacity-0 transition-opacity duration-500 z-10"
-                                playsinline webkit-playsinline muted autoplay
-                                poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
-                            
+                            <div id="overlay-${i}" class="absolute inset-0 bg-black/40 transition-opacity duration-300 z-[1] ${this.state.isScaleFill ? 'opacity-0' : 'opacity-100'}"></div>
                             <div class="touch-layer absolute inset-0 z-20" style="-webkit-touch-callout: none;"></div>
                             
                             <div id="playBtn-${i}" class="play-pause-btn">
@@ -1342,7 +1188,7 @@
                     bgLayer.style.backgroundImage = `url('${bgPosterStr}')`;
                 }
 
-                let libraryName = 'All Videos';
+                let libraryName = 'All Photos';
                 if (this.state.searchTerm) {
                     libraryName = `Search: ${this.state.searchTerm}`;
                 } else if (this.state.isFilteredByTag && this.state.currentTag) {
@@ -1392,7 +1238,7 @@
                     <span class="text-xs font-bold text-primary/70 tabular-nums flex items-center">
                         ${countStr}
                         <span class="w-1.5"></span>
-                        <button id="gridShuffleBtn" title="Shuffle Videos" class="active:scale-90 transition-transform p-[2px] bg-white/10 rounded-full hover:bg-white/20">
+                        <button id="gridShuffleBtn" title="Shuffle Photos" class="active:scale-90 transition-transform p-[2px] bg-white/10 rounded-full hover:bg-white/20">
                             <i data-lucide="sparkles" class="w-3.5 h-3.5 text-white"></i>
                         </button>
                     </span>
@@ -1482,16 +1328,6 @@
                         img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1" height="1"%3E%3Crect width="1" height="1" fill="%23333"%2F%3E%3C%2Fsvg%3E';
                     };
                     el.appendChild(img);
-
-                    if (video.RunTimeTicks) {
-                        const duration = Math.floor(video.RunTimeTicks / 10000000);
-                        const mins = Math.floor(duration / 60);
-                        const secs = duration % 60;
-                        const timeBadge = document.createElement('div');
-                        timeBadge.className = 'absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1 py-0.5 rounded';
-                        timeBadge.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-                        el.appendChild(timeBadge);
-                    }
 
                     gridWrapper.appendChild(el);
                 });
@@ -1586,199 +1422,75 @@
                 lucide.createIcons();
             }
 
+            clearSlideshowTimer() {
+                if (this.slideshowTimer) {
+                    clearTimeout(this.slideshowTimer);
+                    this.slideshowTimer = null;
+                }
+            }
+
+            scheduleSlideshow() {
+                this.clearSlideshowTimer();
+                if (this.state.viewMode !== 'stream' || !this.state.isAutoplay || this.state.isSlideshowPaused) return;
+                if (this.state.currentIndex >= this.state.videos.length - 1) return;
+                this.slideshowTimer = setTimeout(() => this.nextVideo(true), 30000);
+            }
+
             renderBuffer() {
                 if (this.state.viewMode !== 'stream' || !this.dom.slides) return;
 
                 this.dom.videoContainer.style.transform = `translateX(-${this.state.currentIndex * 100}%)`;
-
                 const offsets = [-1, 0, 1];
-                offsets.forEach((offset) => {
-                    const videoIdx = this.state.currentIndex + offset;
-                    if (videoIdx < 0 || videoIdx >= this.state.videos.length) return;
 
-                    const slideIdx = (videoIdx % 3 + 3) % 3;
-                    const slideEl = this.dom.slides[slideIdx];
-                    const videoData = this.state.videos[videoIdx];
+                offsets.forEach(offset => {
+                    const photoIndex = this.state.currentIndex + offset;
+                    if (photoIndex < 0 || photoIndex >= this.state.videos.length) return;
 
-                    slideEl.style.transform = `translateX(${videoIdx * 100}%)`;
-                    slideEl.style.display = 'block';
+                    const slideIndex = (photoIndex % 3 + 3) % 3;
+                    const slide = this.dom.slides[slideIndex];
+                    const photo = this.state.videos[photoIndex];
+                    slide.style.transform = `translateX(${photoIndex * 100}%)`;
+                    slide.style.display = 'block';
 
-                    if (slideEl.dataset.id !== videoData.Id) {
-                        slideEl.dataset.id = videoData.Id;
-                        const posterSrc = this.getImageSrc(videoData);
-
-                        const thumbEl = document.getElementById(`thumb-${slideIdx}`);
-                        if (thumbEl) {
-                            thumbEl.src = posterSrc;
-                            thumbEl.style.opacity = '1';
-                            thumbEl.classList.remove('object-cover', 'object-contain');
-                            thumbEl.classList.add(this.state.isScaleFill ? 'object-cover' : 'object-contain');
-                            thumbEl.onerror = () => { thumbEl.src = this.getImageSrc(null); };
-                        }
-
-                        const posterEl = document.getElementById(`poster-${slideIdx}`);
-                        if (posterEl) {
-                            posterEl.style.backgroundImage = `url('${posterSrc}')`;
-                            posterEl.style.opacity = this.state.isScaleFill ? '0' : '0.7';
-                        }
-
-                        const videoEl = document.getElementById(`video-p${slideIdx}`);
-                        videoEl.style.opacity = '0';
-                        videoEl.onerror = null;
-
-                        // iOS WebKit platform-specific optimization: disable preloading adjacent streams
-                        const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-                            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-                        if (isIOS && offset !== 0) {
-                            if (videoEl.src) {
-                                videoEl.removeAttribute('src');
-                                videoEl.load();
-                            }
-                        } else {
-                            const targetItem = videoData.liveVideoItem || (videoData.Type === 'Video' ? videoData : null);
-                            if (targetItem) {
-                                const preloadSrc = this.getVideoSrc(targetItem.Id, targetItem, false);
-                                if (videoEl.src !== preloadSrc) {
-                                    if (isIOS) {
-                                        videoEl.removeAttribute('src');
-                                        videoEl.load();
-                                    }
-                                    videoEl.src = preloadSrc;
-                                    videoEl.load();
-                                }
-                            } else {
-                                if (videoEl.src) {
-                                    videoEl.removeAttribute('src');
-                                    videoEl.load();
-                                }
-                            }
-                        }
-
-                        videoEl.muted = (offset === 0) ? this.state.isMuted : true;
-
-                        document.getElementById(`playBtn-${slideIdx}`).classList.remove('paused');
+                    if (slide.dataset.id !== String(photo.Id)) {
+                        slide.dataset.id = String(photo.Id);
+                        const imageUrl = this.getImageSrc(photo);
+                        const image = document.getElementById(`thumb-${slideIndex}`);
+                        const poster = document.getElementById(`poster-${slideIndex}`);
+                        image.src = imageUrl;
+                        image.alt = photo.Name || '';
+                        image.style.opacity = '1';
+                        image.classList.remove('object-cover', 'object-contain');
+                        image.classList.add(this.state.isScaleFill ? 'object-cover' : 'object-contain');
+                        image.onerror = () => { image.src = this.getImageSrc(null); };
+                        poster.style.backgroundImage = `url('${imageUrl}')`;
+                        poster.style.opacity = this.state.isScaleFill ? '0' : '0.7';
                     }
                 });
 
                 for (let i = 0; i < 3; i++) {
-                    const activeIndices = offsets.map(o => (this.state.currentIndex + o));
-                    const currentSlideVideoIdx = activeIndices.find(idx => ((idx % 3 + 3) % 3) === i);
-                    if (currentSlideVideoIdx === undefined || currentSlideVideoIdx < 0 || currentSlideVideoIdx >= this.state.videos.length) {
+                    const active = offsets.some(offset => {
+                        const index = this.state.currentIndex + offset;
+                        return index >= 0 && index < this.state.videos.length && ((index % 3 + 3) % 3) === i;
+                    });
+                    if (!active) {
                         this.dom.slides[i].style.display = 'none';
                         this.dom.slides[i].dataset.id = '';
-                        const videoEl = document.getElementById(`video-p${i}`);
-                        if (videoEl) {
-                            videoEl.onerror = null;
-                            videoEl.pause();
-                            videoEl.style.opacity = '0';
-                            videoEl.removeAttribute('src');
-                            videoEl.load();
-                        }
                     }
+                    const button = document.getElementById(`playBtn-${i}`);
+                    if (button) button.classList.toggle('paused', active && this.state.isSlideshowPaused);
                 }
                 this.updateUI();
             }
 
-            loadVideo(index) {
+            loadPhoto(index) {
                 if (this.state.viewMode !== 'stream') return;
-
-                this.state.playSessionId = 'ex_' + Date.now().toString(16);
                 this.renderBuffer();
-
-                const videoData = this.state.videos[this.state.currentIndex];
-                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                const videoEl = document.getElementById(`video-p${slideIdx}`);
-
-                if (!videoEl || !videoData) return;
-
-                const targetItem = videoData.liveVideoItem || (videoData.Type === 'Video' ? videoData : null);
-                if (!targetItem) {
-                    videoEl.pause();
-                    if (videoEl.src) {
-                        videoEl.removeAttribute('src');
-                        videoEl.load();
-                    }
-                    videoEl.style.opacity = '0';
-                    this.toggleLoading(false);
-                    this.fetchPersonInfo(videoData);
-                    return;
-                }
-
-                // 取消自动连播时，Live 视频开启单曲循环
-                videoEl.loop = !this.state.isAutoplay;
-
-                const src = this.getVideoSrc(targetItem.Id, targetItem, true);
-                if (videoEl.src !== src) {
-                    videoEl.pause();
-                    const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-                    if (isIOS) {
-                        videoEl.removeAttribute('src');
-                        videoEl.load();
-                    }
-                    videoEl.src = src;
-                    videoEl.load();
-                }
-
-                videoEl.muted = this.state.isMuted;
-                const muteIcon = this.dom.muteBtn.querySelector('svg');
-                if (muteIcon) {
-                    const iconName = this.state.isMuted ? 'volume-x' : 'volume-2';
-                    const iconColor = this.state.isMuted ? 'text-secondary' : 'stroke-white';
-                    this.dom.muteBtn.innerHTML = `<div class="w-12 h-12 flex items-center justify-center"><i data-lucide="${iconName}" class="${iconColor} w-6 h-6 drop-shadow-md"></i></div>`;
-                    lucide.createIcons({ nameAttr: 'data-lucide', attrs: {}, nodes: [this.dom.muteBtn] });
-                }
-
-                videoEl.onwaiting = () => {
-                    clearTimeout(this._waitingTimer);
-                    this._waitingTimer = setTimeout(() => this.toggleLoading(true), 300);
-                };
-                videoEl.onplaying = () => {
-                    clearTimeout(this._waitingTimer);
-                    this.toggleLoading(false);
-                    videoEl.style.opacity = '1';
-                    this.reportPlayback('playing', videoEl);
-                };
-
-                videoEl.oncanplay = () => {
-                    clearTimeout(this._waitingTimer);
-                    this.toggleLoading(false);
-                    videoEl.style.opacity = '1';
-                };
-
-                if (videoEl.readyState >= 3) {
-                    clearTimeout(this._waitingTimer);
-                    this.toggleLoading(false);
-                    videoEl.style.opacity = '1';
-                }
-
-                videoEl.ontimeupdate = () => {
-                    if (videoEl.duration) {
-                        const pct = (videoEl.currentTime / videoEl.duration) * 100;
-                        this.dom.progressLine.style.width = `${pct}%`;
-                        this.dom.currentTime.textContent = this.formatTime(videoEl.currentTime);
-                        this.dom.totalTime.textContent = this.formatTime(videoEl.duration);
-                        this.reportPlayback('progress', videoEl);
-                    }
-                };
-                videoEl.onpause = () => this.reportPlayback('progress', videoEl);
-
-                videoEl.onended = () => {
-                    this.reportPlayback('stopped', videoEl);
-                    if (this.state.viewMode === 'stream' && this.state.isAutoplay) {
-                        this.nextVideo();
-                    }
-                };
-
-                videoEl.onerror = () => {
-                    console.warn('Video playback failed, handling downgrade retry logic');
-                    this.toggleLoading(false);
-                    this.retryWithAltMode(this.state.currentIndex, videoData);
-                };
-
-                videoEl.dataset.retryCount = '0';
-                this.fetchPersonInfo(videoData);
+                const photo = this.state.videos[this.state.currentIndex];
+                if (!photo) return;
+                this.toggleLoading(false);
+                this.fetchPersonInfo(photo);
+                this.scheduleSlideshow();
             }
 
             async fetchPersonInfo(videoData) {
@@ -1824,283 +1536,19 @@
                 }
             }
 
-            playVideo(index) {
-                if (this.state.viewMode !== 'stream') return;
-                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-
-                if (!window._videosUnlocked) {
-                    const unlock = () => {
-                        window._videosUnlocked = true;
-                        [0, 1, 2].forEach(i => {
-                            const vi = document.getElementById(`video-p${i}`);
-                            if (vi && i !== slideIdx) {
-                                const p = vi.play();
-                                if (p !== undefined) p.then(() => vi.pause()).catch(() => { });
-                            }
-                        });
-                        document.removeEventListener('touchstart', unlock, true);
-                        document.removeEventListener('click', unlock, true);
-                    };
-                    document.addEventListener('touchstart', unlock, { once: true, capture: true });
-                    document.addEventListener('click', unlock, { once: true, capture: true });
-                }
-
-                [0, 1, 2].forEach(i => {
-                    const vi = document.getElementById(`video-p${i}`);
-                    if (vi && i !== slideIdx) {
-                        vi.pause();
-                        vi.currentTime = 0;
-                        const btn = document.getElementById(`playBtn-${i}`);
-                        if (btn) btn.classList.remove('paused');
-                    }
-                });
-
-                const v = document.getElementById(`video-p${slideIdx}`);
-                const btn = document.getElementById(`playBtn-${slideIdx}`);
-                if (v) {
-                    if (!this.state.isMuted) v.muted = false;
-                    const playPromise = v.play();
-
-                    if (playPromise !== undefined) {
-                        playPromise.then(() => {
-                            this.state.isPlaying = true;
-                            if (btn) btn.classList.remove('paused');
-                        }).catch(error => {
-                            console.warn('Playback blocked (likely missing interaction):', error);
-                            this.state.isPlaying = false;
-                            this.toggleLoading(false);
-                            if (btn) btn.classList.add('paused');
-
-                            if (!error || error.name === 'NotAllowedError' || error.name === 'AbortError') {
-                                this.showToast('Browser restricted autoplay. Tap to play.');
-                                const app = document.getElementById('app');
-                                if (app.classList.contains('interface-hidden')) {
-                                    app.classList.remove('interface-hidden');
-                                    this.showInterfaceTemp();
-                                }
-                            }
-                        });
-                    }
-                }
-            }
-
-            retryWithAltMode(index, item) {
-                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                const v = document.getElementById(`video-p${slideIdx}`);
-                if (!v) return;
-
-                const retryCount = parseInt(v.dataset.retryCount || '0');
-                const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-                v.dataset.retryCount = String(retryCount + 1);
-
-                const { server, token } = this.config;
-                const deviceId = this.config.deviceId || 'EmbyX-Device';
-
-                if (this.config.useStatic) {
-                    // -- Direct Play Mode adaptive compatibility fallback --
-                    if (isIOS) {
-                        if (window.activeHls) {
-                            window.activeHls.destroy();
-                            window.activeHls = null;
-                        }
-
-                        if (retryCount === 0) {
-                            // Reload in place to prevent momentary network glitches
-                            v.load();
-                            this.playVideo(index);
-                        } else if (retryCount === 1 && this.state.playbackMethod === 'DirectPlay') {
-                            // Perfect format Direct Play failed -> downgrade
-                            const vStream = item.MediaSources?.[0]?.MediaStreams?.find(s => s.Type === 'Video');
-                            const codec = (vStream?.Codec || item.MediaSources?.[0]?.VideoCodec || '').toLowerCase();
-                            if (codec === 'hevc') {
-                                // iOS has HLS fMP4 packaging 500 error bugs for HEVC streams, block stream copy and show toast
-                                this.toggleLoading(false);
-                                this.state.playbackMethod = 'Failed';
-                                this.showToast('iOS limit. Enable transcoding.');
-                            } else {
-                                this.state.playbackMethod = 'DirectStream';
-                                v.src = this._buildHlsSrc(item.Id, item, false);
-                                v.load();
-                                this.playVideo(index);
-                            }
-                        } else {
-                            // No forced transcoding in Direct Play mode — mark as Failed
-                            this.toggleLoading(false);
-                            this.state.playbackMethod = 'Failed';
-                            this.showToast('iOS limit. Enable transcoding.');
-                        }
-                    } else {
-                        // Non-iOS fallback: Direct Play -> Direct Stream
-                        if (retryCount === 0) {
-                            if (window.activeHls) {
-                                window.activeHls.destroy();
-                                window.activeHls = null;
-                            }
-                            if (window.activeMpegtsPlayer) {
-                                window.activeMpegtsPlayer.destroy();
-                                window.activeMpegtsPlayer = null;
-                            }
-
-                            // STRM stream detection
-                            const isStrm = (item.Path && item.Path.endsWith('.strm')) || 
-                                           (item.MediaSources && item.MediaSources[0] && 
-                                            (item.MediaSources[0].Path.startsWith('http') || 
-                                             item.MediaSources[0].Container === 'strm'));
-                            
-                            if (isStrm) {
-                                if (window.activeHls) {
-                                    window.activeHls.destroy();
-                                    window.activeHls = null;
-                                }
-                                if (window.activeMpegtsPlayer) {
-                                    window.activeMpegtsPlayer.destroy();
-                                    window.activeMpegtsPlayer = null;
-                                }
-
-                                const msId = item.MediaSources?.[0]?.Id || '';
-                                const playSessionId = this.state.playSessionId || ('ex_' + Date.now().toString(16));
-
-                                const mediaSource = item.MediaSources?.[0];
-                                const container = (mediaSource?.Container || '').toLowerCase();
-                                const path = (mediaSource?.Path || '').toLowerCase();
-                                const isFlv = container === 'flv' || path.includes('.flv') || path.includes('flv=') || path.includes('/flv');
-
-                                const playUrl = mediaSource?.Path && mediaSource.Path.startsWith('http') 
-                                    ? mediaSource.Path 
-                                    : fixUrlForJellyfin(`${server}/emby/Videos/${item.Id}/stream?Static=true&api_key=${token}&MediaSourceId=${msId}&DeviceId=${deviceId}&PlaySessionId=${playSessionId}`);
-
-                                if (isFlv && typeof mpegts !== 'undefined' && mpegts.isSupported()) {
-                                    this.state.playbackMethod = 'DirectPlay';
-                                    v.removeAttribute('src');
-                                    v.onerror = null;
-
-                                    const player = mpegts.createPlayer({
-                                        type: 'mse',
-                                        isLive: true,
-                                        url: playUrl
-                                    }, {
-                                        enableWorker: true,
-                                        enableStashBuffer: false,
-                                        stashInitialSize: 128,
-                                        liveBufferLatencyChasing: true,
-                                        liveBufferLatencyMaxLatency: 1.5,
-                                        liveBufferLatencyMinRemain: 0.5
-                                    });
-                                    player.attachMediaElement(v);
-                                    player.load();
-                                    window.activeMpegtsPlayer = player;
-                                    this.playVideo(index);
-                                } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                                    this.state.playbackMethod = 'DirectPlay';
-                                    v.removeAttribute('src');
-                                    v.onerror = null;
-
-                                    const hls = new Hls({
-                                        maxBufferSize: 0,
-                                        liveSyncDurationCount: 3,
-                                    });
-                                    hls.loadSource(playUrl);
-                                    hls.attachMedia(v);
-                                    window.activeHls = hls;
-                                    v.load();
-                                    this.playVideo(index);
-                                }
-                            } else {
-                                if (window.activeHls) {
-                                    window.activeHls.destroy();
-                                    window.activeHls = null;
-                                }
-                                if (window.activeMpegtsPlayer) {
-                                    window.activeMpegtsPlayer.destroy();
-                                    window.activeMpegtsPlayer = null;
-                                }
-                                const { server, token } = this.config;
-                                const deviceId = this.config.deviceId || 'EmbyX-Device';
-                                const params = `api_key=${token}&DeviceId=${deviceId}&VideoCodec=h264,hevc,av1&AllowVideoStreamCopy=true&AllowAudioStreamCopy=true`;
-                                this.state.playbackMethod = 'DirectStream';
-                                v.src = fixUrlForJellyfin(`${server}/emby/Videos/${item.Id}/stream.mp4?${params}`);
-                                v.load();
-                                this.playVideo(index);
-                            }
-                        } else {
-                            this.toggleLoading(false);
-                            this.state.playbackMethod = 'Failed';
-                            this.showToast('Playback failed. Disable Direct Play for transcoding.');
-                        }
-                    }
-                } else {
-                    // -- Transcode Mode fallback --
-                    if (retryCount === 0) {
-                        this.state.playbackMethod = 'Transcode';
-                        v.src = this._buildHlsSrc(item.Id, item, true); // forceReencode = true
-                        v.load();
-                        this.playVideo(index);
-                    } else {
-                        this.toggleLoading(false);
-                        this.state.playbackMethod = 'Failed';
-                        this.showToast('Transcode failed. Check Emby settings.');
-                    }
-                }
-            }
-
-            // -- Universal HLS URL builder (all platforms) --
-            // MediaSourceId and PlaySessionId are required by Emby transcode API; missing them causes 500
-            // To adjust bitrate cap, modify VideoBitrate below (unit: bps, default 20Mbps)
-            //
-            // [Smart Transcode Strategy]
-            // VideoCodec=h264 (declare only h264 support):
-            //   → Source is h264? Allow stream copy (remux into HLS segments, no re-encode) → efficient
-            //   → Source is hevc/av1? Emby detects incompatibility, transcodes to h264 → hardware accel
-            // AllowVideoStreamCopy=true:
-            //   Allows h264 sources to remux directly; prevents wasteful h264→h264 re-encoding
-            _buildHlsSrc(id, mediaItem, forceReencode = false) {
-                const { server, token } = this.config;
-                const mediaSource = mediaItem?.MediaSources?.[0];
-                const mediaSourceId = mediaSource?.Id || '';
-                const playSessionId = this.state.playSessionId || ('hls_' + id + '_' + Date.now());
-                const deviceId = this.config.deviceId || 'EmbyX-Device';
-
-                const vStream = mediaSource?.MediaStreams?.find(s => s.Type === 'Video');
-                const codec = (vStream?.Codec || mediaSource?.VideoCodec || '').toLowerCase();
-                const useTsContainer = forceReencode || codec === 'h264';
-
-                const params = [
-                    `api_key=${token}`,
-                    mediaSourceId ? `MediaSourceId=${mediaSourceId}` : '',
-                    `DeviceId=${deviceId}`,
-                    `PlaySessionId=${playSessionId}`,
-                    forceReencode ? `VideoCodec=h264` : `VideoCodec=h264,hevc,vp9,av1`, // Transcode: lock to h264; stream copy: declare all formats, fMP4 natively supports VP9/AV1 copy
-                    `AudioCodec=aac,mp3,ac3`,
-                    forceReencode ? `VideoBitrate=20000000` : '',  // Bitrate cap only for transcode (LAN 20Mbps); stream copy uses source bitrate
-                    `AudioBitrate=320000`,
-                    `TranscodingMaxAudioChannels=2`,
-                    useTsContainer ? `SegmentContainer=ts` : `SegmentContainer=mp4`,  // Use TS for H264/HEVC to avoid Emby 500 remux bug; keep fMP4 for AV1/VP9
-                    `MinSegments=1`,
-                    useTsContainer ? `BreakOnNonKeyFrames=True` : '',  // TS container keyframe optimization
-                    forceReencode ? `AllowVideoStreamCopy=false` : `AllowVideoStreamCopy=true`,
-                    `AllowAudioStreamCopy=true`
-                ].filter(Boolean).join('&');
-
-                return fixUrlForJellyfin(`${server}/emby/Videos/${id}/master.m3u8?${params}`);
-            }
-
             togglePlay() {
-                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                const v = document.getElementById(`video-p${slideIdx}`);
-                const btn = document.getElementById(`playBtn-${slideIdx}`);
-                if (!v) return;
-
-                if (v.paused) {
-                    v.play();
-                    this.state.isPlaying = true;
-                    if (btn) btn.classList.remove('paused');
+                if (this.state.viewMode !== 'stream') return;
+                this.state.isSlideshowPaused = !this.state.isSlideshowPaused;
+                const slideIndex = (this.state.currentIndex % 3 + 3) % 3;
+                const button = document.getElementById(`playBtn-${slideIndex}`);
+                if (this.state.isSlideshowPaused) {
+                    this.clearSlideshowTimer();
+                    if (button) button.classList.add('paused');
                 } else {
-                    v.pause();
-                    this.state.isPlaying = false;
-                    if (btn) btn.classList.add('paused');
+                    if (button) button.classList.remove('paused');
+                    this.scheduleSlideshow();
                 }
+                this.showInterfaceTemp();
             }
 
 
@@ -2113,13 +1561,7 @@
             }
 
             switchSlide(newIndex, direction) {
-                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                const curV = document.getElementById(`video-p${slideIdx}`);
-                if (curV) {
-                    curV.pause();
-                    this.reportPlayback('stopped', curV);
-                }
-
+                this.clearSlideshowTimer();
                 if (this.dom.slides) {
                     const destSlideIdx = (newIndex % 3 + 3) % 3;
                     const destSlide = this.dom.slides[destSlideIdx];
@@ -2143,127 +1585,8 @@
                 }
 
                 requestAnimationFrame(() => {
-                    this.loadVideo(newIndex);
-                    this.playVideo(newIndex);
+                    this.loadPhoto(newIndex);
                 });
-            }
-
-            reportPlayback(event, videoEl) {
-                if (!this.config.server || !this.config.token || this.state.videos.length === 0) return;
-
-                const now = Date.now();
-                if (event === 'progress' && now - (this.state.lastReportTime || 0) < 5000) return;
-                if (event === 'progress') this.state.lastReportTime = now;
-
-                const videoData = this.state.videos[this.state.currentIndex];
-                if (!videoData || !videoEl) return;
-
-                // Emby Fix: 1. Map standard names 2. Add MediaSourceId 3. Report Capabilities
-                const eventMap = { 'playing': 'TimeUpdate', 'progress': 'TimeUpdate', 'stopped': 'Stopped' };
-                const eventName = videoEl.paused ? 'Pause' : (eventMap[event] || 'TimeUpdate');
-                const mediaSourceId = videoData.MediaSources?.[0]?.Id || '';
-
-                if (event === 'playing') {
-                    this.reportCapabilities();
-                }
-
-                const ticks = Math.floor(videoEl.currentTime * 10000000);
-
-                let endpoint = '/Sessions/Playing';
-                if (event === 'progress') endpoint = '/Sessions/Playing/Progress';
-                if (event === 'stopped') endpoint = '/Sessions/Playing/Stopped';
-
-                const payload = {
-                    ItemId: videoData.Id,
-                    PositionTicks: ticks,
-                    IsPaused: videoEl.paused || event === 'stopped',
-                    IsMuted: videoEl.muted,
-                    VolumeLevel: Math.floor(videoEl.volume * 100),
-                    PlayMethod: this.state.playbackMethod || (this.config.useStatic ? 'DirectPlay' : 'Transcode'),
-                    EventName: eventName,
-                    CanSeek: true,
-                    PlaySessionId: this.state.playSessionId,
-                    QueueableMediaTypes: ["Video"]
-                };
-                if (mediaSourceId) payload.MediaSourceId = mediaSourceId;
-
-                fetch(`${this.config.server}/emby${endpoint}?api_key=${this.config.token}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Emby-Authorization': `Emby Client="EmbyX", Device="${this.config.deviceName}", DeviceId="${this.config.deviceId}", Version="${this.config.appVersion}"${this.config.token ? `, Token="${this.config.token}"` : ''}`
-                    },
-                    body: JSON.stringify(payload)
-                }).catch(() => { });
-            }
-
-            reportCapabilities() {
-                if (this.state._capabilitiesReported) return;
-                const { server, token } = this.config;
-                if (!server || !token) return;
-                this.state._capabilitiesReported = true;
-                fetch(`${server}/emby/Sessions/Capabilities/Full?api_key=${token}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Emby-Authorization': `Emby Client="EmbyX", Device="${this.config.deviceName}", DeviceId="${this.config.deviceId}", Version="${this.config.appVersion}"${token ? `, Token="${token}"` : ''}`
-                    },
-                    body: JSON.stringify({
-                        PlayableMediaTypes: ["Video"],
-                        SupportsMediaControl: true,
-                        SupportsPersistentConnections: false
-                    })
-                }).catch(() => { });
-            }
-
-            getVideoSrc(id, mediaItem, isPrimaryPlayback = false) {
-                const { server, token, useStatic } = this.config;
-
-                // Get metadata (codec and container)
-                const mediaSource = mediaItem?.MediaSources?.[0];
-                const vStream = mediaSource?.MediaStreams?.find(s => s.Type === 'Video');
-                const codec = (vStream?.Codec || mediaSource?.VideoCodec || '').toLowerCase();
-                const container = (mediaSource?.Container || '').toLowerCase();
-                const codecTag = (vStream?.CodecTag || mediaSource?.VideoCodecTag || '').toLowerCase();
-
-                // -- Case 1: Direct Play off (Transcode mode) --
-                if (!useStatic) {
-                    if (isPrimaryPlayback) this.state.playbackMethod = 'Transcode';
-                    return this._buildHlsSrc(id, mediaItem);
-                }
-
-                // -- Case 2: Direct Play on (Absolute direct play / remux) --
-                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-                if (isIOS) {
-                    // Smart Check: For natively supported format (H.264/hvc1 MP4 is treated as native on iOS; other HEVC goes to HLS copy)
-                    const isMp4Container = container.includes('mp4') || container.includes('m4v') || container.includes('mov');
-                    const isNativeCompatible = (codec === 'h264' && isMp4Container) ||
-                                               (codec === 'hevc' && codecTag.includes('hvc1') && isMp4Container);
-
-                    if (!isNativeCompatible) {
-                        // For non-perfect formats (HEVC hev1, VP9, AV1, MKV, etc.), start playing via HLS video copy immediately
-                        if (isPrimaryPlayback) this.state.playbackMethod = 'DirectStream';
-                        return this._buildHlsSrc(id, mediaItem, false); // forceReencode = false
-                    }
-                }
-
-                // Fall through to Direct Play (Static=true) for non-iOS or perfect formats
-                const playSessionId = this.state.playSessionId || ('ex_' + Date.now().toString(16));
-                const deviceId = this.config.deviceId || 'EmbyX-Device';
-                const msId = mediaSource?.Id || '';
-
-                const params = [
-                    `api_key=${token}`,
-                    `Static=true`,
-                    msId ? `MediaSourceId=${msId}` : '',
-                    `DeviceId=${deviceId}`,
-                    `PlaySessionId=${playSessionId}`
-                ].filter(Boolean).join('&');
-
-                if (isPrimaryPlayback) this.state.playbackMethod = 'DirectPlay';
-                return fixUrlForJellyfin(`${server}/emby/Videos/${id}/stream?${params}`);
             }
 
             getImageSrc(video) {
@@ -2286,7 +1609,7 @@
                 if (!list) return;
                 list.innerHTML = '';
 
-                const allowedTypes = ['homevideos', 'photos'];
+                const allowedTypes = ['photos'];
                 const filteredViews = viewsDataRaw.Items ? viewsDataRaw.Items.filter(item => {
                     if (!item.CollectionType) return true;
                     const cType = item.CollectionType.toLowerCase();
@@ -2303,8 +1626,8 @@
                     this.state.isFilteredByPerson = false;
                     this.state.currentLibraryId = 'favorites';
                     this.state.currentLibraryType = 'favorites';
-                    localStorage.setItem('emby_lib_id', 'favorites');
-                    localStorage.setItem('emby_lib_type', 'favorites');
+                    localStorage.setItem('emby_pic_lib_id', 'favorites');
+                    localStorage.setItem('emby_pic_lib_type', 'favorites');
                     this.state.currentTab = 'home';
                     this.updateTabHighlight();
                     if (this.state.favorites.size === 0) {
@@ -2334,8 +1657,8 @@
                             this.state.isFilteredByPerson = false;
                             this.state.currentLibraryId = pl.Id;
                             this.state.currentLibraryType = 'playlist';
-                            localStorage.setItem('emby_lib_id', pl.Id);
-                            localStorage.setItem('emby_lib_type', 'playlist');
+                            localStorage.setItem('emby_pic_lib_id', pl.Id);
+                            localStorage.setItem('emby_pic_lib_type', 'playlist');
                             this.state.currentTab = 'home';
                             this.updateTabHighlight();
                             this.state.startIndex = 0;
@@ -2358,8 +1681,6 @@
                         let iconName = isSelected ? 'check-circle' : 'clapperboard';
                         if (!isSelected) {
                             if (lib.CollectionType === 'tvshows') iconName = 'tv';
-                            else if (lib.CollectionType === 'homevideos') iconName = 'video';
-                            else if (lib.CollectionType === 'musicvideos') iconName = 'cassette-tape';
                             else if (lib.CollectionType === 'boxsets') iconName = 'archive';
                         }
 
@@ -2371,8 +1692,8 @@
                             this.state.isFilteredByPerson = false;
                             this.state.currentLibraryId = lib.Id;
                             this.state.currentLibraryType = 'library';
-                            localStorage.setItem('emby_lib_id', lib.Id);
-                            localStorage.setItem('emby_lib_type', 'library');
+                            localStorage.setItem('emby_pic_lib_id', lib.Id);
+                            localStorage.setItem('emby_pic_lib_type', 'library');
                             this.state.currentTab = 'home';
                             this.updateTabHighlight();
                             this.state.startIndex = 0;
@@ -2717,8 +2038,8 @@
                 this.toggleLoading(true);
                 try {
                     const { server, token, userId } = this.config;
-                    const sortStr = this.config.shortDrama ? 'SortBy=Path&SortOrder=Ascending' : 'SortBy=DateCreated&SortOrder=Descending';
-                    const url = `${server}/emby/Users/${userId}/Items?api_key=${token}&Recursive=true&IncludeItemTypes=Movie,Episode,Video,MusicVideo&Limit=150&Fields=Overview,Path,RunTimeTicks,MediaSources,Tags,TagItems&Tags=${encodeURIComponent(tagName)}&${sortStr}`;
+                    const sortStr = 'SortBy=DateCreated&SortOrder=Descending';
+                    const url = `${server}/emby/Users/${userId}/Items?api_key=${token}&Recursive=true&IncludeItemTypes=Photo&Limit=150&Fields=Overview,Path,RunTimeTicks,MediaSources,Tags,TagItems&Tags=${encodeURIComponent(tagName)}&${sortStr}`;
                     const res = await fetch(url, {
                         headers: {
                             'X-Emby-Authorization': `Emby Client="EmbyX", Device="${this.config.deviceName}", DeviceId="${this.config.deviceId}", Version="${this.config.appVersion}"${token ? `, Token="${token}"` : ''}`
@@ -2865,7 +2186,7 @@
                 const item = this.state.videos[this.state.currentIndex];
                 if (!item) return;
 
-                this.dom.deleteFileName.textContent = 'Confirm delete ' + (item.Name || 'this video') + '?';
+                this.dom.deleteFileName.textContent = 'Confirm delete ' + (item.Name || 'this photo') + '?';
                 this.toggleModal('deleteConfirmModal', true);
                 lucide.createIcons();
             }
@@ -2908,11 +2229,9 @@
                         if (this.state.currentIndex >= this.state.videos.length) {
                             this.state.currentIndex = Math.max(0, this.state.videos.length - 1);
                         }
-                        // Fix: renderSlides only rebuilds DOM; must call loadVideo+playVideo to resume playback
                         this.renderSlides();
                         if (this.state.videos.length > 0) {
-                            this.loadVideo(this.state.currentIndex);
-                            this.playVideo(this.state.currentIndex);
+                            this.loadPhoto(this.state.currentIndex);
                         }
                     }
                 } catch (e) {
@@ -2947,10 +2266,6 @@
             }
 
             togglePlayMode() {
-                if (this.config.shortDrama) {
-                    this.showToast('ℹ️ Sequence play locked in Short Drama mode');
-                    return;
-                }
                 const isSeq = this.state.playMode === 'sequence';
                 this.state.playMode = isSeq ? 'random' : 'sequence';
                 localStorage.setItem('emby_play_mode', this.state.playMode);
@@ -2981,16 +2296,17 @@
             }
 
 
-            nextVideo() {
+            nextVideo(isAuto = false) {
                 const nextIndex = this.state.currentIndex + 1;
                 if (nextIndex >= this.state.videos.length) {
-                    this.showToast('You reached the last video');
+                    if (!isAuto) this.showToast('You reached the last photo');
                     return;
                 }
                 this.switchSlide(nextIndex, 'up');
             }
 
             toggleViewMode() {
+                this.clearSlideshowTimer();
                 const isStream = this.state.viewMode === 'stream';
 
                 if (isStream && (this.state.isFilteredByPerson || this.state.isFilteredByTag)) {
@@ -3051,8 +2367,7 @@
                     if (app) app.classList.remove('grid-active');
                     this.dom.videoContainer.style.touchAction = 'pan-y';
                     this.renderSlides();
-                    this.loadVideo(this.state.currentIndex);
-                    this.playVideo(this.state.currentIndex);
+                    this.loadPhoto(this.state.currentIndex);
                     this.showInterfaceTemp();
                 }
             }
@@ -3060,11 +2375,7 @@
             toggleScaleMode() {
                 this.state.isScaleFill = !this.state.isScaleFill;
                 localStorage.setItem('emby_is_scale_fill', this.state.isScaleFill);
-                const videos = document.querySelectorAll('.video-fullscreen');
-                videos.forEach((v, index) => {
-                    v.classList.remove('object-cover', 'object-contain');
-                    v.classList.add(this.state.isScaleFill ? 'object-cover' : 'object-contain');
-
+                [0, 1, 2].forEach(index => {
                     const thumb = document.getElementById(`thumb-${index}`);
                     const poster = document.getElementById(`poster-${index}`);
                     const overlay = document.getElementById(`overlay-${index}`);
@@ -3087,6 +2398,7 @@
                 const scaleBtn = this.dom.scaleBtn;
                 scaleBtn.innerHTML = `<div class="w-12 h-12 flex items-center justify-center"><i data-lucide="${this.state.isScaleFill ? 'maximize-2' : 'minimize-2'}" class="stroke-white w-6 h-6 drop-shadow-md"></i></div>`;
                 lucide.createIcons();
+                if (this.dom.slides) this.renderBuffer();
             }
 
 
@@ -3100,88 +2412,49 @@
                 lucide.createIcons();
 
                 try {
-                    const res = await fetch(`${this.config.server}/emby/Users/${this.config.userId}/Items/${item.Id}?api_key=${this.config.token}&Fields=MediaSources`, {
+                    const res = await fetch(`${this.config.server}/emby/Users/${this.config.userId}/Items/${item.Id}?api_key=${this.config.token}&Fields=MediaSources,Path`, {
                         headers: {
                             'X-Emby-Authorization': `Emby Client="EmbyX", Device="${this.config.deviceName}", DeviceId="${this.config.deviceId}", Version="${this.config.appVersion}"${this.config.token ? `, Token="${this.config.token}"` : ''}`
                         }
                     });
                     if (!res.ok) throw new Error('API Error');
                     const data = await res.json();
+                    const source = data.MediaSources?.[0] || {};
+                    const width = data.Width || source.Width || '?';
+                    const height = data.Height || source.Height || '?';
+                    const container = (source.Container || data.Container || 'Unknown').toUpperCase();
+                    const fileSize = source.Size
+                        ? (source.Size > 1024 * 1024 * 1024
+                            ? (source.Size / (1024 * 1024 * 1024)).toFixed(1) + ' GB'
+                            : (source.Size / (1024 * 1024)).toFixed(1) + ' MB')
+                        : 'Unknown';
+                    const path = this.escapeHtml(data.Path || source.Path || '-');
 
-                    if (data && data.MediaSources && data.MediaSources.length > 0) {
-                        const src = data.MediaSources[0];
-                        const c = src.Container || 'Unknown';
-                        const vStream = src.MediaStreams?.find(s => s.Type === 'Video');
-                        const w = vStream?.Width || '?';
-                        const h = vStream?.Height || '?';
-                        const fps = vStream?.AverageFrameRate ? Math.round(parseFloat(vStream.AverageFrameRate)) : '?';
-                        const vCodec = vStream?.Codec || 'Unknown';
-                        const aCodec = src.MediaStreams?.find(s => s.Type === 'Audio')?.Codec || 'Unknown';
-                        const bitrate = src.Bitrate ? (src.Bitrate / 1000000).toFixed(2) + ' Mbps' : 'Unknown';
-                        const fileSizeStr = src.Size ? (src.Size > 1024 * 1024 * 1024 ? (src.Size / (1024 * 1024 * 1024)).toFixed(1) + ' GB' : (src.Size / (1024 * 1024)).toFixed(1) + ' MB') : 'Unknown';
-                        let transcodeState = 'Direct Play';
-                        if (this.state.playbackMethod === 'Failed') {
-                            transcodeState = 'Playback Failed';
-                        } else if (this.state.playbackMethod === 'DirectPlay') {
-                            transcodeState = 'Direct Play';
-                        } else if (this.state.playbackMethod === 'DirectStream') {
-                            const audioCodec = (src.MediaStreams?.find(s => s.Type === 'Audio')?.Codec || '').toLowerCase();
-                            const isAudioNative = ['aac', 'mp3', 'ac3', 'eac3', 'aac_latm'].includes(audioCodec);
-                            if (isAudioNative) {
-                                transcodeState = 'Direct Stream';
-                            } else {
-                                const audioLabel = { 'dts': 'DTS', 'truehd': 'TrueHD', 'opus': 'Opus', 'flac': 'FLAC', 'vorbis': 'Vorbis' }[audioCodec] || audioCodec.toUpperCase();
-                                transcodeState = `Direct Stream (${audioLabel}→AAC)`;
-                            }
-                        } else if (this.state.playbackMethod === 'Transcode' || this.state.playbackMethod === 'TranscodeStream') {
-                            transcodeState = 'Transcoding';
-                        } else {
-                            transcodeState = this.config.useStatic ? 'Direct Play' : 'Transcoding';
-                        }
-
-                        this.dom.mediaInfoContent.innerHTML = `
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
-                                <span class="text-gray-500 text-right">Resolution</span>
-                                <span class="col-span-2 text-gray-200 font-mono">${w}x${h}@${fps}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
-                                <span class="text-gray-500 text-right">Container</span>
-                                <span class="col-span-2 text-gray-200">${c.toUpperCase()}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
-                                <span class="text-gray-500 text-right">Video Codec</span>
-                                <span class="col-span-2 text-gray-200 font-mono">${vCodec.toUpperCase()}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
-                                <span class="text-gray-500 text-right">Audio Codec</span>
-                                <span class="col-span-2 text-gray-200 font-mono">${aCodec.toUpperCase()}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
-                                <span class="text-gray-500 text-right">Total Bitrate</span>
-                                <span class="col-span-2 text-gray-200 font-mono">${bitrate}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
-                                <span class="text-gray-500 text-right">File Size</span>
-                                <span class="col-span-2 text-gray-200 font-mono">${fileSizeStr}</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 py-2 items-center">
-                                <span class="text-gray-500 text-right">Playback</span>
-                                <span class="col-span-2 text-gray-200">${transcodeState}</span>
-                            </div>
-                        `;
-                    } else {
-                        this.dom.mediaInfoContent.innerHTML = `<div class="text-center text-red-400 py-4">Failed to get media info</div>`;
-                    }
+                    this.dom.mediaInfoContent.innerHTML = `
+                        <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
+                            <span class="text-gray-500 text-right">Dimensions</span>
+                            <span class="col-span-2 text-gray-200 font-mono">${width}x${height}</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
+                            <span class="text-gray-500 text-right">Format</span>
+                            <span class="col-span-2 text-gray-200">${container}</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 py-2 items-center border-b border-gray-700/50">
+                            <span class="text-gray-500 text-right">File Size</span>
+                            <span class="col-span-2 text-gray-200 font-mono">${fileSize}</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 py-2 items-start">
+                            <span class="text-gray-500 text-right">Path</span>
+                            <span class="col-span-2 text-gray-200 break-all select-text">${path}</span>
+                        </div>
+                    `;
                 } catch (e) {
-                    this.dom.mediaInfoContent.innerHTML = `<div class="text-center text-red-400 py-4">Failed to fetch data</div>`;
+                    this.dom.mediaInfoContent.innerHTML = `<div class="text-center text-red-400 py-4">Failed to fetch photo information</div>`;
                 }
             }
 
+
             bindEvents() {
-                this.dom.clickToPlayOverlay.onclick = () => {
-                    this.dom.clickToPlayOverlay.style.display = 'none';
-                    this.playVideo(this.state.currentIndex);
-                };
                 const recalcMetaInfo = () => this.recalculateMetaInfoHeight();
                 window.addEventListener('resize', recalcMetaInfo);
                 window.addEventListener('orientationchange', recalcMetaInfo);
@@ -3296,22 +2569,6 @@
                     }
                 });
 
-                this.dom.muteBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    this.state.isMuted = !this.state.isMuted;
-                    localStorage.setItem('emby_is_muted', this.state.isMuted);
-
-                    const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                    const v = document.getElementById(`video-p${slideIdx}`);
-                    if (v) {
-                        v.muted = this.state.isMuted;
-                    }
-
-                    const muteBtn = this.dom.muteBtn;
-                    muteBtn.innerHTML = `<div class="w-12 h-12 flex items-center justify-center"><i data-lucide="${this.state.isMuted ? 'volume-x' : 'volume-2'}" class="${this.state.isMuted ? 'text-secondary' : 'stroke-white'} w-6 h-6 drop-shadow-md"></i></div>`;
-                    lucide.createIcons();
-                };
-
                 this.dom.fullscreenBtn.onclick = (e) => {
                     e.stopPropagation();
                     const app = document.getElementById('app');
@@ -3389,7 +2646,7 @@
                             this.toggleLoading(true);
                             try {
                                 const { server, token, userId } = this.config;
-                                const url = `${server}/emby/Users/${userId}/Items?api_key=${token}&Recursive=true&IncludeItemTypes=Movie,Episode,Video,MusicVideo&Limit=150&Fields=Overview,Path,RunTimeTicks,MediaSources,Tags,TagItems&Person=${encodeURIComponent(personName)}`;
+                                const url = `${server}/emby/Users/${userId}/Items?api_key=${token}&Recursive=true&IncludeItemTypes=Photo&Limit=150&Fields=Overview,Path,RunTimeTicks,MediaSources,Tags,TagItems&Person=${encodeURIComponent(personName)}`;
                                 const res = await fetch(url, {
                                     headers: {
                                         'X-Emby-Authorization': `Emby Client="EmbyX", Device="${this.config.deviceName}", DeviceId="${this.config.deviceId}", Version="${this.config.appVersion}"${token ? `, Token="${token}"` : ''}`
@@ -3466,14 +2723,6 @@
                     if (e.target === e.currentTarget) {
                         this.toggleModal('deleteConfirmModal', false);
                     }
-                };
-
-                document.getElementById('progressBarContainer').onclick = (e) => {
-                    e.stopPropagation();
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                    const v = document.getElementById(`video-p${slideIdx}`);
-                    if (v && v.duration) v.currentTime = ((e.clientX - rect.left) / rect.width) * v.duration;
                 };
 
                 const container = document.getElementById('app');
@@ -3664,8 +2913,6 @@
                                     this.showMediaInfo();
                                 }
                             }
-                        } else if (lowKey === 'm') {
-                            this.dom.muteBtn.click();
                         } else if (lowKey === 'u') {
                             // Instant center heart burst (pure SVG + high performance CSS)
                             const heart = document.createElement('div');
@@ -3702,250 +2949,142 @@
             }
 
             bindGestures(container) {
-                let state = 'IDLE'; // IDLE, SPEED, DRAG
                 let x0 = 0, y0 = 0;
                 let t0 = 0;
-                let longPressTimer = null;
                 let clickTimer = null;
                 let clickCount = 0;
-                let targetTime = 0;
-                let originalTime = 0;
+                let lastTap = { x: 0, y: 0 };
                 let gestureActive = false;
 
                 container.style.touchAction = 'none';
                 container.style.userSelect = 'none';
                 container.style.webkitUserSelect = 'none';
 
-                const speedToast = document.createElement('div');
-                speedToast.className = 'absolute top-[calc(env(safe-area-inset-top)+20px)] left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-bold opacity-0 transition-opacity z-50 pointer-events-none flex items-center gap-2';
-                speedToast.innerHTML = '<i data-lucide="fast-forward" class="w-4 h-4 text-green-400"></i><span>Playing at 2x speed</span>';
-                document.getElementById('app').appendChild(speedToast);
-                lucide.createIcons();
+                const isCenterTap = (x, y) => (
+                    x > window.innerWidth * 0.25 &&
+                    x < window.innerWidth * 0.75 &&
+                    y > window.innerHeight * 0.18 &&
+                    y < window.innerHeight * 0.82
+                );
 
-                const resetSpeed = () => {
-                    clearTimeout(longPressTimer);
-                    speedToast.classList.add('opacity-0');
-                    const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                    const v = document.getElementById(`video-p${slideIdx}`);
-                    if (v && v.playbackRate !== 1.0) v.playbackRate = 1.0;
-                };
+                const isExcludedTarget = target => [
+                    '.bottom-nav',
+                    '.bottom-info',
+                    '.right-toolbar',
+                    '#favoriteBtn',
+                    '#addToPlaylistBtn',
+                    '#scaleBtn',
+                    '#personBtn',
+                    '#fullscreenBtn',
+                    '#deleteBtn',
+                    '#libraryModal',
+                    '#addToPlaylistModal',
+                    '#mediaInfoModal',
+                    '#deleteConfirmModal',
+                    '.profile-layer',
+                ].some(selector => target.closest(selector));
 
-                const startHandler = (e) => {
-                    if (this.state.viewMode !== 'stream') { gestureActive = false; resetSpeed(); return; }
-                    if (this.isAnyModalOpen()) { gestureActive = false; resetSpeed(); return; }
-
-                    const excluded = [
-                        '.bottom-nav',
-                        '.bottom-info',
-                        '.right-toolbar',
-                        '#favoriteBtn',
-                        '#addToPlaylistBtn',
-                        '#scaleBtn',
-                        '#muteBtn',
-                        '#personBtn',
-                        '#fullscreenBtn',
-                        '#deleteBtn',
-                        'header',
-                        '.safe-header',
-                        '#libraryModal',
-                        '#addToPlaylistModal',
-                        '#mediaInfoModal',
-                        '#deleteConfirmModal',
-                        '.profile-layer',
-                    ];
-                    if (excluded.some(sel => e.target.closest(sel))) {
+                const startHandler = e => {
+                    if (this.state.viewMode !== 'stream' || this.isAnyModalOpen() || isExcludedTarget(e.target)) {
                         gestureActive = false;
-                        resetSpeed();
                         return;
                     }
-
                     gestureActive = true;
-                    state = 'IDLE';
-                    const t = e.touches ? e.touches[0] : e;
-                    x0 = t.clientX;
-                    y0 = t.clientY;
+                    const point = e.touches ? e.touches[0] : e;
+                    x0 = point.clientX;
+                    y0 = point.clientY;
                     t0 = Date.now();
-
-                    const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                    const v = document.getElementById(`video-p${slideIdx}`);
-                    if (v) originalTime = v.currentTime;
-
-                    clearTimeout(longPressTimer);
-                    longPressTimer = setTimeout(() => {
-                        if (state === 'IDLE' && gestureActive && !this.isAnyModalOpen()) {
-                            state = 'SPEED';
-                            if (v) v.playbackRate = 2.0;
-                            speedToast.classList.remove('opacity-0');
-                        }
-                    }, 300);
                 };
 
-                const moveHandler = (e) => {
-                    if (!gestureActive || this.state.viewMode !== 'stream' || this.isAnyModalOpen()) {
-                        if (state === 'SPEED') resetSpeed();
-                        return;
-                    }
-                    const t = e.touches ? e.touches[0] : e;
-                    const diffX = t.clientX - x0;
-                    const diffY = t.clientY - y0;
-
-                    if (Math.abs(diffX) > Math.abs(diffY)) {
-                        if (e.cancelable) e.preventDefault();
-                    }
-
-                    if (Math.abs(diffX) > 15 || Math.abs(diffY) > 15) {
-                        clearTimeout(longPressTimer);
-
-                        if (state === 'SPEED') {
-                            resetSpeed();
-                        }
-
-                        /* DRAG disabled for Gallery Mode */
+                const moveHandler = e => {
+                    if (!gestureActive || this.state.viewMode !== 'stream' || this.isAnyModalOpen()) return;
+                    const point = e.touches ? e.touches[0] : e;
+                    const diffX = point.clientX - x0;
+                    const diffY = point.clientY - y0;
+                    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 8 && e.cancelable) {
+                        e.preventDefault();
                     }
                 };
 
-                const endHandler = (e) => {
-                    if (!gestureActive || this.state.viewMode !== 'stream') {
-                        resetSpeed();
-                        return;
-                    }
+                const endHandler = e => {
+                    if (!gestureActive || this.state.viewMode !== 'stream') return;
                     gestureActive = false;
-                    clearTimeout(longPressTimer);
-                    const t = e.changedTouches ? e.changedTouches[0] : e;
-                    const diffX = t.clientX - x0;
-                    const diffY = t.clientY - y0;
-                    const time = Date.now() - t0;
+                    const point = e.changedTouches ? e.changedTouches[0] : e;
+                    const diffX = point.clientX - x0;
+                    const diffY = point.clientY - y0;
+                    const elapsed = Date.now() - t0;
 
                     if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
                         diffX < 0 ? this.nextVideo() : this.prevVideo();
                         return;
                     }
-
                     if (Math.abs(diffY) > 50 && Math.abs(diffY) > Math.abs(diffX)) {
                         this.toggleModal('libraryModal', true);
                         return;
                     }
+                    if (Math.abs(diffX) >= 10 || Math.abs(diffY) >= 10 || elapsed >= 300) return;
 
-                    if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10 && time < 300) {
-                        clickCount++;
-                        if (clickCount === 1) {
-                            clickTimer = setTimeout(() => {
-                                const app = document.getElementById('app');
-                                if (app.classList.contains('interface-hidden')) {
-                                    app.classList.remove('interface-hidden');
-                                    this.showInterfaceTemp();
-                                } else {
-                                    this.togglePlay();
-                                }
-                                clickCount = 0;
-                            }, 250);
-                        } else if (clickCount === 2) {
-                            clearTimeout(clickTimer);
-                            clickCount = 0;
-                            const w = window.innerWidth;
-                            if (t.clientX < w / 4) {
-                                this.handleDoubleTapSkip('rewind', t.clientX, t.clientY);
-                            } else if (t.clientX > w * 3 / 4) {
-                                this.handleDoubleTapSkip('forward', t.clientX, t.clientY);
-                            } else {
-                                this.handleDoubleTap(t.clientX, t.clientY);
+                    lastTap = { x: point.clientX, y: point.clientY };
+                    clickCount++;
+                    if (clickCount === 1) {
+                        clickTimer = setTimeout(() => {
+                            const app = document.getElementById('app');
+                            if (isCenterTap(lastTap.x, lastTap.y)) {
+                                this.togglePlay();
+                            } else if (app.classList.contains('interface-hidden')) {
+                                app.classList.remove('interface-hidden');
+                                this.showInterfaceTemp();
                             }
+                            clickCount = 0;
+                        }, 250);
+                    } else {
+                        clearTimeout(clickTimer);
+                        clickCount = 0;
+                        if (isCenterTap(point.clientX, point.clientY)) {
+                            this.handleDoubleTap(point.clientX, point.clientY);
+                        } else {
+                            this.showInterfaceTemp();
                         }
                     }
                 };
 
-                container.style.userSelect = 'none';
-                container.style.webkitUserSelect = 'none';
-
-                container.addEventListener('contextmenu', (e) => {
-                    if (e.target.closest('.touch-layer') || e.target.tagName.toLowerCase() === 'video') {
+                container.addEventListener('contextmenu', e => {
+                    if (e.target.closest('.touch-layer') || e.target.tagName.toLowerCase() === 'img') {
                         e.preventDefault();
                     }
                 });
-
                 container.addEventListener('touchstart', startHandler, { passive: true });
                 container.addEventListener('touchmove', moveHandler, { passive: false });
 
                 let lastTouchEnd = 0;
-                container.addEventListener('touchend', (e) => {
+                container.addEventListener('touchend', e => {
                     lastTouchEnd = Date.now();
                     endHandler(e);
                 });
-                container.addEventListener('touchcancel', () => { 
-                    gestureActive = false; 
-                    state = 'IDLE'; 
-                    resetSpeed();
-                });
+                container.addEventListener('touchcancel', () => { gestureActive = false; });
 
                 let isMouseDown = false;
-                container.addEventListener('mousedown', (e) => {
-                    if (e.button !== 0) return;
-                    if (Date.now() - lastTouchEnd < 500) return;
+                container.addEventListener('mousedown', e => {
+                    if (e.button !== 0 || Date.now() - lastTouchEnd < 500) return;
                     isMouseDown = true;
                     e.touches = [{ clientX: e.clientX, clientY: e.clientY }];
                     startHandler(e);
                 });
-                container.addEventListener('mousemove', (e) => {
+                container.addEventListener('mousemove', e => {
                     if (!isMouseDown) return;
                     e.touches = [{ clientX: e.clientX, clientY: e.clientY }];
                     moveHandler(e);
                 });
-                const mouseEndHandler = (e) => {
+                const mouseEndHandler = e => {
                     if (!isMouseDown) return;
                     isMouseDown = false;
                     e.changedTouches = [{ clientX: e.clientX, clientY: e.clientY }];
                     endHandler(e);
                 };
                 container.addEventListener('mouseup', mouseEndHandler);
-                container.addEventListener('mouseleave', (e) => {
-                    mouseEndHandler(e);
-                    resetSpeed();
-                });
-                window.addEventListener('blur', resetSpeed);
+                container.addEventListener('mouseleave', mouseEndHandler);
             }
 
-            async handleDoubleTapSkip(direction, x, y) {
-                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-                const v = document.getElementById(`video-p${slideIdx}`);
-                if (!v || !v.duration) return;
-
-                const isRewind = direction === 'rewind';
-                if (isRewind) {
-                    v.currentTime = Math.max(0, v.currentTime - 15);
-                } else {
-                    v.currentTime = Math.min(v.duration, v.currentTime + 15);
-                }
-                this.showInterfaceTemp();
-
-                const bubble = document.createElement('div');
-                bubble.innerHTML = `
-                    <div class="flex flex-col items-center justify-center bg-black/40 backdrop-blur-md text-white rounded-full w-[80px] h-[80px] shadow-2xl space-y-1">
-                        <div class="flex items-center justify-center">
-                            ${isRewind ? '<i data-lucide="chevrons-left" class="w-6 h-6"></i>' : '<i data-lucide="chevrons-right" class="w-6 h-6"></i>'}
-                        </div>
-                        <span class="text-xs font-bold leading-none">15s</span>
-                    </div>
-                `;
-                bubble.className = 'absolute pointer-events-none z-50 transform pointer-events-none transition-all duration-300 ease-out flex items-center justify-center';
-                bubble.style.top = `${Math.max(80, Math.min(y - 40, window.innerHeight - 80))}px`;
-                if (isRewind) bubble.style.left = '20px';
-                else bubble.style.right = '20px';
-                bubble.style.opacity = '0';
-                bubble.style.transform = `scale(0.8) ${isRewind ? 'translateX(-20px)' : 'translateX(20px)'}`;
-
-                document.getElementById('app').appendChild(bubble);
-                lucide.createIcons({ root: bubble });
-
-                requestAnimationFrame(() => {
-                    bubble.style.transform = 'scale(1) translateX(0)';
-                    bubble.style.opacity = '1';
-                    setTimeout(() => {
-                        bubble.style.transform = `scale(0.8) ${isRewind ? 'translateX(-20px)' : 'translateX(20px)'}`;
-                        bubble.style.opacity = '0';
-                        setTimeout(() => bubble.remove(), 300);
-                    }, 400);
-                });
-            }
 
             async handleDoubleTap(x, y) {
                 // 1. Point animation DOM generation (pure SVG + high performance CSS)
@@ -4026,13 +3165,6 @@
                 t.textContent = msg;
                 t.classList.remove('opacity-0');
                 this._toastTimer = setTimeout(() => t.classList.add('opacity-0'), duration);
-            }
-
-            formatTime(s) {
-                if (!s) return '00:00';
-                const m = Math.floor(s / 60);
-                const sec = Math.floor(s % 60);
-                return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
             }
 
             escapeHtml(str) {

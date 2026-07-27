@@ -441,7 +441,7 @@
                             <div>
                                 <p class="text-gray-300">👋 Hi～我叫<a href="https://juneix.github.io" target="_blank"
                                         class="text-primary hover:underline">@谢週五</a>，<b>EmbyX</b> 是一款专为 Emby / Jellyfin（兼容飞牛影视🔥）打造的
-                                    Web 原生应用，pic 画廊模式专注照片浏览，让你的私人图片库拥有沉浸式翻阅体验。🎉</p>
+                                    Web 原生应用，画廊模式专注照片浏览，让你的私人图片库拥有沉浸式翻阅体验。🎉</p>
                             </div>
 
                             <div
@@ -459,7 +459,7 @@
                                     </li>
                                     <li class="flex items-center">
                                         <span class="text-primary mr-1.5">🖼️</span>
-                                        pic 画廊只读取普通图片，动态照片等非图片项目会被自动屏蔽。
+                                        画廊只扫描图片，自动屏蔽视频文件。
                                     </li>
                                 </ul>
                             </div>
@@ -869,7 +869,7 @@
                 this.config.user = localStorage.getItem('emby_user') || '';
                 this.config.token = localStorage.getItem('emby_token') || '';
                 this.config.userId = localStorage.getItem('emby_uid') || '';
-                this.config.autoplay = localStorage.getItem('emby_autoplay') !== 'false';
+                this.config.autoplay = localStorage.getItem('emby_pic_autoplay') !== 'false';
                 this.config.slideshowInterval = this.clampSlideshowInterval(localStorage.getItem('emby_pic_slideshow_interval') || '30');
                 this.config.magazineMode = localStorage.getItem('emby_pic_magazine_mode') === 'true';
                 this.config.deleteMode = localStorage.getItem('emby_delete_mode') === 'true';
@@ -889,8 +889,8 @@
                 const savedPlayMode = localStorage.getItem('emby_play_mode');
                 if (savedPlayMode !== null) this.state.playMode = savedPlayMode;
 
-                const savedLibId = localStorage.getItem('emby_lib_id');
-                const savedLibType = localStorage.getItem('emby_lib_type');
+                const savedLibId = localStorage.getItem('emby_pic_lib_id');
+                const savedLibType = localStorage.getItem('emby_pic_lib_type');
                 if (savedLibId) {
                     this.state.currentLibraryId = savedLibId;
                     this.state.currentLibraryType = savedLibType || 'library';
@@ -1022,7 +1022,7 @@
                     if (isUnchangedPwd && this.config.token && this.config.server === server && this.config.user === user) {
                         // 服务器未变，fnOS 状态沿用内存值，无需重新发探测请求
                         const fnOS = this.config.fnOS;
-                        localStorage.setItem('emby_autoplay', autoplay);
+                        localStorage.setItem('emby_pic_autoplay', autoplay);
                         localStorage.setItem('emby_pic_slideshow_interval', slideshowInterval);
                         localStorage.setItem('emby_pic_magazine_mode', magazineMode);
                         localStorage.setItem('emby_delete_mode', deleteMode);
@@ -1070,7 +1070,7 @@
                     localStorage.setItem('emby_user', user);
                     localStorage.setItem('emby_token', data.AccessToken);
                     localStorage.setItem('emby_uid', data.SessionInfo.UserId);
-                    localStorage.setItem('emby_autoplay', autoplay);
+                    localStorage.setItem('emby_pic_autoplay', autoplay);
                     localStorage.setItem('emby_pic_slideshow_interval', slideshowInterval);
                     localStorage.setItem('emby_pic_magazine_mode', magazineMode);
                     localStorage.setItem('emby_delete_mode', deleteMode);
@@ -1092,8 +1092,8 @@
                     // 清理数据缓存，保留核心设置并重新加载
                     localStorage.removeItem('emby_views_cache');
                     localStorage.removeItem('emby_favorites');
-                    localStorage.removeItem('emby_lib_id');
-                    localStorage.removeItem('emby_lib_type');
+                    localStorage.removeItem('emby_pic_lib_id');
+                    localStorage.removeItem('emby_pic_lib_type');
                     location.reload();
                 } catch (e) {
                     console.error('saveConfig error:', e);
@@ -2200,8 +2200,8 @@
                     this.state.isFilteredByPerson = false;
                     this.state.currentLibraryId = 'favorites';
                     this.state.currentLibraryType = 'favorites';
-                    localStorage.setItem('emby_lib_id', 'favorites');
-                    localStorage.setItem('emby_lib_type', 'favorites');
+                    localStorage.setItem('emby_pic_lib_id', 'favorites');
+                    localStorage.setItem('emby_pic_lib_type', 'favorites');
                     this.state.currentTab = 'home';
                     this.updateTabHighlight();
                     if (this.state.favorites.size === 0) {
@@ -2233,8 +2233,8 @@
                             this.state.isFilteredByPerson = false;
                             this.state.currentLibraryId = pl.Id;
                             this.state.currentLibraryType = 'playlist';
-                            localStorage.setItem('emby_lib_id', pl.Id);
-                            localStorage.setItem('emby_lib_type', 'playlist');
+                            localStorage.setItem('emby_pic_lib_id', pl.Id);
+                            localStorage.setItem('emby_pic_lib_type', 'playlist');
                             this.state.currentTab = 'home';
                             this.updateTabHighlight();
                             this.state.startIndex = 0;
@@ -2272,8 +2272,8 @@
                             this.state.isFilteredByPerson = false;
                             this.state.currentLibraryId = lib.Id;
                             this.state.currentLibraryType = 'library';
-                            localStorage.setItem('emby_lib_id', lib.Id);
-                            localStorage.setItem('emby_lib_type', 'library');
+                            localStorage.setItem('emby_pic_lib_id', lib.Id);
+                            localStorage.setItem('emby_pic_lib_type', 'library');
                             this.state.currentTab = 'home';
                             this.updateTabHighlight();
                             this.state.startIndex = 0;

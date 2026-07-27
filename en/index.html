@@ -1590,14 +1590,9 @@
                             }
                         } else {
                             const preloadSrc = this.getVideoSrc(videoData.Id, videoData, false);
-                            if (videoEl.src !== preloadSrc) {
-                                if (isIOS) {
-                                    videoEl.removeAttribute('src');
-                                    videoEl.load();
-                                }
-                                videoEl.src = preloadSrc;
-                                videoEl.load();
-                            }
+                            this.setVideoSource(videoEl, preloadSrc, videoIdx, videoData, {
+                                preloadOnly: offset !== 0
+                            });
                         }
 
                         videoEl.muted = (offset === 0) ? this.state.isMuted : true;
@@ -1638,17 +1633,7 @@
                 if (!videoEl || !videoData) return;
 
                 const src = this.getVideoSrc(videoData.Id, videoData, true);
-                if (videoEl.src !== src) {
-                    videoEl.pause();
-                    const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-                    if (isIOS) {
-                        videoEl.removeAttribute('src');
-                        videoEl.load();
-                    }
-                    videoEl.src = src;
-                    videoEl.load();
-                }
+                this.setVideoSource(videoEl, src, index, videoData, { autoplay: true });
 
                 videoEl.muted = this.state.isMuted;
                 const muteIcon = this.dom.muteBtn.querySelector('svg');
@@ -1701,6 +1686,10 @@
                 };
 
                 videoEl.onerror = () => {
+                    if (videoEl.dataset.hlsFatalHandled === 'true') {
+                        delete videoEl.dataset.hlsFatalHandled;
+                        return;
+                    }
                     console.warn('Video playback failed, handling downgrade retry logic');
                     this.toggleLoading(false);
                     this.retryWithAltMode(this.state.currentIndex, videoData);
@@ -1753,26 +1742,97 @@
                 }
             }
 
+            isCurrentPlayback(videoEl, videoId, requestedSrc, playAttempt = null) {
+                const current = this.state.videos[this.state.currentIndex];
+                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
+                return this.state.viewMode === 'stream' &&
+                    current && String(current.Id) === String(videoId) &&
+                    document.getElementById(`video-p${slideIdx}`) === videoEl &&
+                    videoEl.dataset.requestedSrc === requestedSrc &&
+                    (playAttempt === null || videoEl.dataset.playAttempt === playAttempt);
+            }
+
+            setVideoSource(videoEl, src, index, item, options = {}) {
+                if (!videoEl || !src) return;
+                const { preloadOnly = false, autoplay = false, forceHls = false, live = false } = options;
+                const isHls = forceHls || /\.m3u8(?:$|[?#])/i.test(src);
+                const nativeHls = !!videoEl.canPlayType('application/vnd.apple.mpegurl');
+
+                if (isHls && !nativeHls && typeof Hls !== 'undefined' && Hls.isSupported()) {
+                    if (preloadOnly) {
+                        if (window.activeHls?.media === videoEl) {
+                            window.activeHls.destroy();
+                            window.activeHls = null;
+                        }
+                        videoEl.pause();
+                        videoEl.removeAttribute('src');
+                        videoEl.load();
+                        videoEl.dataset.requestedSrc = src;
+                        return;
+                    }
+
+                    if (window.activeHls?.media === videoEl && videoEl.dataset.requestedSrc === src) {
+                        if (autoplay && videoEl.dataset.hlsLoading === 'true') {
+                            videoEl.dataset.pendingPlay = 'true';
+                        }
+                        return;
+                    }
+
+                    if (window.activeHls) window.activeHls.destroy();
+                    videoEl.pause();
+                    videoEl.removeAttribute('src');
+                    videoEl.load();
+                    videoEl.dataset.requestedSrc = src;
+                    videoEl.dataset.hlsLoading = 'true';
+                    if (autoplay) videoEl.dataset.pendingPlay = 'true';
+
+                    const hls = new Hls(live ? {
+                        maxBufferSize: 0,
+                        liveSyncDurationCount: 3
+                    } : {});
+                    window.activeHls = hls;
+
+                    hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                        if (window.activeHls === hls && videoEl.dataset.requestedSrc === src) {
+                            hls.loadSource(src);
+                        }
+                    });
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        if (window.activeHls !== hls || !this.isCurrentPlayback(videoEl, item.Id, src)) return;
+                        videoEl.dataset.hlsLoading = 'false';
+                        if (videoEl.dataset.pendingPlay === 'true') {
+                            delete videoEl.dataset.pendingPlay;
+                            this.playVideo(index);
+                        }
+                    });
+                    hls.on(Hls.Events.ERROR, (_event, data) => {
+                        if (!data.fatal || window.activeHls !== hls) return;
+                        const isCurrent = this.isCurrentPlayback(videoEl, item.Id, src);
+                        hls.destroy();
+                        window.activeHls = null;
+                        videoEl.dataset.hlsLoading = 'false';
+                        videoEl.dataset.hlsFatalHandled = 'true';
+                        if (isCurrent) this.retryWithAltMode(index, item);
+                    });
+                    hls.attachMedia(videoEl);
+                    return;
+                }
+
+                if (!preloadOnly && window.activeHls) {
+                    window.activeHls.destroy();
+                    window.activeHls = null;
+                }
+                if (videoEl.dataset.requestedSrc === src && videoEl.getAttribute('src')) return;
+                videoEl.pause();
+                videoEl.dataset.requestedSrc = src;
+                videoEl.dataset.hlsLoading = 'false';
+                videoEl.src = src;
+                videoEl.load();
+            }
+
             playVideo(index) {
                 if (this.state.viewMode !== 'stream') return;
                 const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-
-                if (!window._videosUnlocked) {
-                    const unlock = () => {
-                        window._videosUnlocked = true;
-                        [0, 1, 2].forEach(i => {
-                            const vi = document.getElementById(`video-p${i}`);
-                            if (vi && i !== slideIdx) {
-                                const p = vi.play();
-                                if (p !== undefined) p.then(() => vi.pause()).catch(() => { });
-                            }
-                        });
-                        document.removeEventListener('touchstart', unlock, true);
-                        document.removeEventListener('click', unlock, true);
-                    };
-                    document.addEventListener('touchstart', unlock, { once: true, capture: true });
-                    document.addEventListener('click', unlock, { once: true, capture: true });
-                }
 
                 [0, 1, 2].forEach(i => {
                     const vi = document.getElementById(`video-p${i}`);
@@ -1787,26 +1847,35 @@
                 const v = document.getElementById(`video-p${slideIdx}`);
                 const btn = document.getElementById(`playBtn-${slideIdx}`);
                 if (v) {
+                    if (v.dataset.hlsLoading === 'true') {
+                        v.dataset.pendingPlay = 'true';
+                        return;
+                    }
+                    const videoId = this.state.videos[this.state.currentIndex]?.Id;
+                    const requestedSrc = v.dataset.requestedSrc || v.currentSrc || v.src;
+                    const playAttempt = String((parseInt(v.dataset.playAttempt || '0') + 1));
+                    v.dataset.playAttempt = playAttempt;
                     if (!this.state.isMuted) v.muted = false;
                     const playPromise = v.play();
 
                     if (playPromise !== undefined) {
                         playPromise.then(() => {
+                            if (!this.isCurrentPlayback(v, videoId, requestedSrc, playAttempt)) return;
                             this.state.isPlaying = true;
                             if (btn) btn.classList.remove('paused');
                         }).catch(error => {
-                            console.warn('Playback blocked (likely missing interaction):', error);
+                            if (error?.name === 'AbortError' || !this.isCurrentPlayback(v, videoId, requestedSrc, playAttempt)) return;
+                            console.warn('Video playback failed:', error);
+                            if (error?.name !== 'NotAllowedError') return;
                             this.state.isPlaying = false;
                             this.toggleLoading(false);
                             if (btn) btn.classList.add('paused');
 
-                            if (!error || error.name === 'NotAllowedError' || error.name === 'AbortError') {
-                                this.showToast('Browser restricted autoplay. Tap to play.');
-                                const app = document.getElementById('app');
-                                if (app.classList.contains('interface-hidden')) {
-                                    app.classList.remove('interface-hidden');
-                                    this.showInterfaceTemp();
-                                }
+                            this.showToast('Browser restricted autoplay. Tap to play.');
+                            const app = document.getElementById('app');
+                            if (app.classList.contains('interface-hidden')) {
+                                app.classList.remove('interface-hidden');
+                                this.showInterfaceTemp();
                             }
                         });
                     }
@@ -1850,8 +1919,7 @@
                                 this.showToast('iOS limit. Enable transcoding.');
                             } else {
                                 this.state.playbackMethod = 'DirectStream';
-                                v.src = this._buildHlsSrc(item.Id, item, false);
-                                v.load();
+                                this.setVideoSource(v, this._buildHlsSrc(item.Id, item, false), index, item, { autoplay: true });
                                 this.playVideo(index);
                             }
                         } else {
@@ -1917,26 +1985,29 @@
                                         liveBufferLatencyMaxLatency: 1.5,
                                         liveBufferLatencyMinRemain: 0.5
                                     });
+                                    v.dataset.requestedSrc = playUrl;
+                                    v.dataset.hlsLoading = 'false';
                                     player.attachMediaElement(v);
                                     player.load();
                                     window.activeMpegtsPlayer = player;
                                     this.playVideo(index);
-                                } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                                } else if (v.canPlayType('application/vnd.apple.mpegurl') ||
+                                    (typeof Hls !== 'undefined' && Hls.isSupported())) {
                                     this.state.playbackMethod = 'DirectPlay';
-                                    v.removeAttribute('src');
-                                    v.onerror = null;
-
-                                    const hls = new Hls({
-                                        maxBufferSize: 0,
-                                        liveSyncDurationCount: 3,
+                                    this.setVideoSource(v, playUrl, index, item, {
+                                        autoplay: true,
+                                        forceHls: true,
+                                        live: true
                                     });
-                                    hls.loadSource(playUrl);
-                                    hls.attachMedia(v);
-                                    window.activeHls = hls;
-                                    v.load();
                                     this.playVideo(index);
                                 }
                             } else {
+                                if (this.state.playbackMethod === 'DirectStream') {
+                                    this.toggleLoading(false);
+                                    this.state.playbackMethod = 'Failed';
+                                    this.showToast('Playback failed. Disable Direct Play for transcoding.');
+                                    return;
+                                }
                                 if (window.activeHls) {
                                     window.activeHls.destroy();
                                     window.activeHls = null;
@@ -1949,8 +2020,7 @@
                                 const deviceId = this.config.deviceId || 'EmbyX-Device';
                                 const params = `api_key=${token}&DeviceId=${deviceId}&VideoCodec=h264,hevc,av1&AllowVideoStreamCopy=true&AllowAudioStreamCopy=true`;
                                 this.state.playbackMethod = 'DirectStream';
-                                v.src = fixUrlForJellyfin(`${server}/emby/Videos/${item.Id}/stream.mp4?${params}`);
-                                v.load();
+                                this.setVideoSource(v, fixUrlForJellyfin(`${server}/emby/Videos/${item.Id}/stream.mp4?${params}`), index, item, { autoplay: true });
                                 this.playVideo(index);
                             }
                         } else {
@@ -1963,8 +2033,7 @@
                     // -- Transcode Mode fallback --
                     if (retryCount === 0) {
                         this.state.playbackMethod = 'Transcode';
-                        v.src = this._buildHlsSrc(item.Id, item, true); // forceReencode = true
-                        v.load();
+                        this.setVideoSource(v, this._buildHlsSrc(item.Id, item, true), index, item, { autoplay: true });
                         this.playVideo(index);
                     } else {
                         this.toggleLoading(false);
@@ -2022,9 +2091,7 @@
                 if (!v) return;
 
                 if (v.paused) {
-                    v.play();
-                    this.state.isPlaying = true;
-                    if (btn) btn.classList.remove('paused');
+                    this.playVideo(this.state.currentIndex);
                 } else {
                     v.pause();
                     this.state.isPlaying = false;
@@ -2178,6 +2245,26 @@
                         if (isPrimaryPlayback) this.state.playbackMethod = 'DirectStream';
                         return this._buildHlsSrc(id, mediaItem, false); // forceReencode = false
                     }
+                }
+
+                // MKV/TS and similar containers are not consistently supported by browsers; remux them to MP4 first.
+                const isNativeContainer = ['mp4', 'm4v', 'mov'].some(type => container.includes(type));
+                if (!isIOS && !isNativeContainer) {
+                    const playSessionId = this.state.playSessionId || ('ex_' + Date.now().toString(16));
+                    const deviceId = this.config.deviceId || 'EmbyX-Device';
+                    const msId = mediaSource?.Id || '';
+                    const params = [
+                        `api_key=${token}`,
+                        msId ? `MediaSourceId=${msId}` : '',
+                        `DeviceId=${deviceId}`,
+                        `PlaySessionId=${playSessionId}`,
+                        `VideoCodec=h264,hevc,vp9,av1`,
+                        `AudioCodec=aac,mp3,ac3`,
+                        `AllowVideoStreamCopy=true`,
+                        `AllowAudioStreamCopy=true`
+                    ].filter(Boolean).join('&');
+                    if (isPrimaryPlayback) this.state.playbackMethod = 'DirectStream';
+                    return fixUrlForJellyfin(`${server}/emby/Videos/${id}/stream.mp4?${params}`);
                 }
 
                 // Fall through to Direct Play (Static=true) for non-iOS or perfect formats

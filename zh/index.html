@@ -1812,15 +1812,9 @@
                         } else {
                             // 非 iOS 设备，或当前正在播放的视频：正常预加载
                             const preloadSrc = this.getVideoSrc(videoData.Id, videoData, false);
-                            if (videoEl.src !== preloadSrc) {
-                                if (isIOS) {
-                                    // iOS 当前视频加载前做一次干净的置空，防旧连接残留
-                                    videoEl.removeAttribute('src');
-                                    videoEl.load();
-                                }
-                                videoEl.src = preloadSrc;
-                                videoEl.load();
-                            }
+                            this.setVideoSource(videoEl, preloadSrc, videoIdx, videoData, {
+                                preloadOnly: offset !== 0
+                            });
                         }
 
                         // 【关键修复】防止声音重叠：
@@ -1882,19 +1876,9 @@
                     }
                 }
 
-                // renderBuffer 已赋值 src，处理未匹配时的修正
+                // renderBuffer 已预载相邻项；当前项在这里按浏览器能力选择原生播放或 Hls.js
                 const src = this.getVideoSrc(videoData.Id, videoData, true);
-                if (videoEl.src !== src) {
-                    videoEl.pause();
-                    const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-                    if (isIOS) {
-                        videoEl.removeAttribute('src');
-                        videoEl.load();
-                    }
-                    videoEl.src = src;
-                    videoEl.load();
-                }
+                this.setVideoSource(videoEl, src, index, videoData, { autoplay: true });
 
                 // 同步全局静音状态（精准更新 SVG）
                 videoEl.muted = this.state.isMuted;
@@ -1956,6 +1940,10 @@
                 };
 
                 videoEl.onerror = () => {
+                    if (videoEl.dataset.hlsFatalHandled === 'true') {
+                        delete videoEl.dataset.hlsFatalHandled;
+                        return;
+                    }
                     console.warn('视频播放失败，处理降级重试逻辑');
                     this.toggleLoading(false);
                     this.retryWithAltMode(this.state.currentIndex, videoData);
@@ -2008,28 +1996,97 @@
                 }
             }
 
+            isCurrentPlayback(videoEl, videoId, requestedSrc, playAttempt = null) {
+                const current = this.state.videos[this.state.currentIndex];
+                const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
+                return this.state.viewMode === 'stream' &&
+                    current && String(current.Id) === String(videoId) &&
+                    document.getElementById(`video-p${slideIdx}`) === videoEl &&
+                    videoEl.dataset.requestedSrc === requestedSrc &&
+                    (playAttempt === null || videoEl.dataset.playAttempt === playAttempt);
+            }
+
+            setVideoSource(videoEl, src, index, item, options = {}) {
+                if (!videoEl || !src) return;
+                const { preloadOnly = false, autoplay = false, forceHls = false, live = false } = options;
+                const isHls = forceHls || /\.m3u8(?:$|[?#])/i.test(src);
+                const nativeHls = !!videoEl.canPlayType('application/vnd.apple.mpegurl');
+
+                if (isHls && !nativeHls && typeof Hls !== 'undefined' && Hls.isSupported()) {
+                    if (preloadOnly) {
+                        if (window.activeHls?.media === videoEl) {
+                            window.activeHls.destroy();
+                            window.activeHls = null;
+                        }
+                        videoEl.pause();
+                        videoEl.removeAttribute('src');
+                        videoEl.load();
+                        videoEl.dataset.requestedSrc = src;
+                        return;
+                    }
+
+                    if (window.activeHls?.media === videoEl && videoEl.dataset.requestedSrc === src) {
+                        if (autoplay && videoEl.dataset.hlsLoading === 'true') {
+                            videoEl.dataset.pendingPlay = 'true';
+                        }
+                        return;
+                    }
+
+                    if (window.activeHls) window.activeHls.destroy();
+                    videoEl.pause();
+                    videoEl.removeAttribute('src');
+                    videoEl.load();
+                    videoEl.dataset.requestedSrc = src;
+                    videoEl.dataset.hlsLoading = 'true';
+                    if (autoplay) videoEl.dataset.pendingPlay = 'true';
+
+                    const hls = new Hls(live ? {
+                        maxBufferSize: 0,
+                        liveSyncDurationCount: 3
+                    } : {});
+                    window.activeHls = hls;
+
+                    hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                        if (window.activeHls === hls && videoEl.dataset.requestedSrc === src) {
+                            hls.loadSource(src);
+                        }
+                    });
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        if (window.activeHls !== hls || !this.isCurrentPlayback(videoEl, item.Id, src)) return;
+                        videoEl.dataset.hlsLoading = 'false';
+                        if (videoEl.dataset.pendingPlay === 'true') {
+                            delete videoEl.dataset.pendingPlay;
+                            this.playVideo(index);
+                        }
+                    });
+                    hls.on(Hls.Events.ERROR, (_event, data) => {
+                        if (!data.fatal || window.activeHls !== hls) return;
+                        const isCurrent = this.isCurrentPlayback(videoEl, item.Id, src);
+                        hls.destroy();
+                        window.activeHls = null;
+                        videoEl.dataset.hlsLoading = 'false';
+                        videoEl.dataset.hlsFatalHandled = 'true';
+                        if (isCurrent) this.retryWithAltMode(index, item);
+                    });
+                    hls.attachMedia(videoEl);
+                    return;
+                }
+
+                if (!preloadOnly && window.activeHls) {
+                    window.activeHls.destroy();
+                    window.activeHls = null;
+                }
+                if (videoEl.dataset.requestedSrc === src && videoEl.getAttribute('src')) return;
+                videoEl.pause();
+                videoEl.dataset.requestedSrc = src;
+                videoEl.dataset.hlsLoading = 'false';
+                videoEl.src = src;
+                videoEl.load();
+            }
+
             playVideo(index) {
                 if (this.state.viewMode !== 'stream') return;
                 const slideIdx = (this.state.currentIndex % 3 + 3) % 3;
-
-                // Safari & Edge Autoplay Policy Bypass (解锁视频池)
-                if (!window._videosUnlocked) {
-                    const unlock = () => {
-                        window._videosUnlocked = true;
-                        [0, 1, 2].forEach(i => {
-                            const vi = document.getElementById(`video-p${i}`);
-                            if (vi && i !== slideIdx) {
-                                // 快速播放并暂停，获取浏览器授权令牌
-                                const p = vi.play();
-                                if (p !== undefined) p.then(() => vi.pause()).catch(() => { });
-                            }
-                        });
-                        document.removeEventListener('touchstart', unlock, true);
-                        document.removeEventListener('click', unlock, true);
-                    };
-                    document.addEventListener('touchstart', unlock, { once: true, capture: true });
-                    document.addEventListener('click', unlock, { once: true, capture: true });
-                }
 
                 // 停止非当前视频
                 [0, 1, 2].forEach(i => {
@@ -2046,27 +2103,35 @@
                 const v = document.getElementById(`video-p${slideIdx}`);
                 const btn = document.getElementById(`playBtn-${slideIdx}`);
                 if (v) {
+                    if (v.dataset.hlsLoading === 'true') {
+                        v.dataset.pendingPlay = 'true';
+                        return;
+                    }
+                    const videoId = this.state.videos[this.state.currentIndex]?.Id;
+                    const requestedSrc = v.dataset.requestedSrc || v.currentSrc || v.src;
+                    const playAttempt = String((parseInt(v.dataset.playAttempt || '0') + 1));
+                    v.dataset.playAttempt = playAttempt;
                     if (!this.state.isMuted) v.muted = false;
                     const playPromise = v.play();
 
                     if (playPromise !== undefined) {
                         playPromise.then(() => {
+                            if (!this.isCurrentPlayback(v, videoId, requestedSrc, playAttempt)) return;
                             this.state.isPlaying = true;
                             if (btn) btn.classList.remove('paused');
                         }).catch(error => {
-                            console.warn('播放被阻止(可能缺失交互):', error);
+                            if (error?.name === 'AbortError' || !this.isCurrentPlayback(v, videoId, requestedSrc, playAttempt)) return;
+                            console.warn('视频播放失败:', error);
+                            if (error?.name !== 'NotAllowedError') return;
                             this.state.isPlaying = false;
                             this.toggleLoading(false);
                             if (btn) btn.classList.add('paused');
 
-                            // 降级：如果被浏览器强行阻止，弹出UI引导用户点击
-                            if (!error || error.name === 'NotAllowedError' || error.name === 'AbortError') {
-                                this.showToast('浏览器限制，请手动播放');
-                                const app = document.getElementById('app');
-                                if (app.classList.contains('interface-hidden')) {
-                                    app.classList.remove('interface-hidden');
-                                    this.showInterfaceTemp();
-                                }
+                            this.showToast('浏览器限制，请手动播放');
+                            const app = document.getElementById('app');
+                            if (app.classList.contains('interface-hidden')) {
+                                app.classList.remove('interface-hidden');
+                                this.showInterfaceTemp();
                             }
                         });
                     }
@@ -2110,8 +2175,7 @@
                                 this.showToast('iOS 限制，请开启转码');
                             } else {
                                 this.state.playbackMethod = 'DirectStream';
-                                v.src = this._buildHlsSrc(item.Id, item, false);
-                                v.load();
+                                this.setVideoSource(v, this._buildHlsSrc(item.Id, item, false), index, item, { autoplay: true });
                                 this.playVideo(index);
                             }
                         } else {
@@ -2181,28 +2245,30 @@
                                         liveBufferLatencyMaxLatency: 1.5,
                                         liveBufferLatencyMinRemain: 0.5
                                     });
+                                    v.dataset.requestedSrc = playUrl;
+                                    v.dataset.hlsLoading = 'false';
                                     player.attachMediaElement(v);
                                     player.load();
                                     window.activeMpegtsPlayer = player;
                                     this.playVideo(index);
-                                } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                                } else if (v.canPlayType('application/vnd.apple.mpegurl') ||
+                                    (typeof Hls !== 'undefined' && Hls.isSupported())) {
                                     this.state.playbackMethod = 'DirectPlay';
-                                    // 清理旧报错残留并解绑原生错误监听，防止直播抖动误触发降级导致反复刷新
-                                    v.removeAttribute('src');
-                                    v.onerror = null;
-
-                                    const hls = new Hls({
-                                        maxBufferSize: 0,
-                                        liveSyncDurationCount: 3,
+                                    this.setVideoSource(v, playUrl, index, item, {
+                                        autoplay: true,
+                                        forceHls: true,
+                                        live: true
                                     });
-                                    hls.loadSource(playUrl);
-                                    hls.attachMedia(v);
-                                    window.activeHls = hls;
-                                    v.load();
                                     this.playVideo(index);
                                 }
                             } else {
                                 // 普通本地视频（如 MP4/MKV）：原生 HTML5 播放器，清理并卸载 Hls.js 和 mpegts
+                                if (this.state.playbackMethod === 'DirectStream') {
+                                    this.toggleLoading(false);
+                                    this.state.playbackMethod = 'Failed';
+                                    this.showToast('播放失败，请开启转码');
+                                    return;
+                                }
                                 if (window.activeHls) {
                                     window.activeHls.destroy();
                                     window.activeHls = null;
@@ -2213,8 +2279,7 @@
                                 }
                                 const params = `api_key=${token}&DeviceId=${deviceId}&VideoCodec=h264,hevc,av1&AllowVideoStreamCopy=true&AllowAudioStreamCopy=true`;
                                 this.state.playbackMethod = 'DirectStream';
-                                v.src = fixUrlForJellyfin(`${server}/emby/Videos/${item.Id}/stream.mp4?${params}`);
-                                v.load();
+                                this.setVideoSource(v, fixUrlForJellyfin(`${server}/emby/Videos/${item.Id}/stream.mp4?${params}`), index, item, { autoplay: true });
                                 this.playVideo(index);
                             }
                         } else {
@@ -2227,8 +2292,7 @@
                     // ── B. 转码模式下的兼容失效回退 ───────────────────────────
                     if (retryCount === 0) {
                         this.state.playbackMethod = 'Transcode';
-                        v.src = this._buildHlsSrc(item.Id, item, true); // forceReencode = true
-                        v.load();
+                        this.setVideoSource(v, this._buildHlsSrc(item.Id, item, true), index, item, { autoplay: true });
                         this.playVideo(index);
                     } else {
                         this.toggleLoading(false);
@@ -2276,9 +2340,7 @@
                 if (!v) return;
 
                 if (v.paused) {
-                    v.play();
-                    this.state.isPlaying = true;
-                    if (btn) btn.classList.remove('paused');
+                    this.playVideo(this.state.currentIndex);
                 } else {
                     v.pause();
                     this.state.isPlaying = false;
@@ -2569,6 +2631,26 @@
                         if (isPrimaryPlayback) this.state.playbackMethod = 'DirectStream';
                         return this._buildHlsSrc(id, mediaItem, false); // forceReencode = false
                     }
+                }
+
+                // 浏览器对 MKV/TS 等容器的原生支持不稳定，优先让服务端无损转封装为 MP4。
+                const isNativeContainer = ['mp4', 'm4v', 'mov'].some(type => container.includes(type));
+                if (!isIOS && !isNativeContainer) {
+                    const playSessionId = this.state.playSessionId || ('ex_' + Date.now().toString(16));
+                    const deviceId = this.config.deviceId || 'EmbyX-Device';
+                    const msId = mediaSource?.Id || '';
+                    const params = [
+                        `api_key=${token}`,
+                        msId ? `MediaSourceId=${msId}` : '',
+                        `DeviceId=${deviceId}`,
+                        `PlaySessionId=${playSessionId}`,
+                        `VideoCodec=h264,hevc,vp9,av1`,
+                        `AudioCodec=aac,mp3,ac3`,
+                        `AllowVideoStreamCopy=true`,
+                        `AllowAudioStreamCopy=true`
+                    ].filter(Boolean).join('&');
+                    if (isPrimaryPlayback) this.state.playbackMethod = 'DirectStream';
+                    return fixUrlForJellyfin(`${server}/emby/Videos/${id}/stream.mp4?${params}`);
                 }
 
                 // 余下所有情况（非苹果设备、或是苹果下完美兼容 of h264+mp4）执行原画直连 (Direct Play)

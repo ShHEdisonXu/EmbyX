@@ -440,12 +440,12 @@ function renderForm(it){
     </div></div>`;
 
     f.innerHTML=h;
+    bindPersonInput();
     setTimeout(autoResizeAll,0);
 }
 
 function onChg(k,v){S.changes[k]=v}
-// Person input listeners - attached after renderForm
-setTimeout(()=>{
+function bindPersonInput(){
     const pi=document.getElementById('person-input');
     const pd=document.getElementById('person-dropdown');
     if(pi){
@@ -455,21 +455,25 @@ setTimeout(()=>{
             if(e.key==='Escape'){pd.classList.remove('show')}
         });
     }
-    if(pd){document.addEventListener('click',e=>{if(!e.target.closest('.person-add-row'))pd.classList.remove('show')})}
-},0);
+}
+document.addEventListener('click',e=>{
+    const pd=document.getElementById('person-dropdown');
+    if(pd&&!e.target.closest('.person-add-row'))pd.classList.remove('show');
+});
 
 async function saveSingle(){
     if(!S.edit||!Object.keys(S.changes).length)return;
+    const changes={...S.changes};
     const btn=document.getElementById('save-btn');btn.disabled=true;
     btn.innerHTML='<i data-lucide="loader-2" class="w-3.5 h-3.5" style="animation:spin .8s linear infinite"></i> 保存中...';lucide.createIcons();
     try{
         // GET full item first, merge changes, POST back
         const fullRes=await api(`/Users/${C.userId}/Items/${S.edit.Id}?Fields=Tags,TagItems,People,ProviderIds`);
         const full=await fullRes.json();
-        const merged={...full,...buildPayload(S.changes)};
+        const merged={...full,...buildPayload(changes)};
         await updateItem(S.edit.Id,merged);
-        Object.assign(S.edit,S.changes);S.changes={};
-        if(S.changes.Name){const nd=document.querySelector(`.tn[data-id="${S.edit.Id}"] .nm`);if(nd)nd.textContent=S.changes.Name}
+        Object.assign(S.edit,changes);S.changes={};
+        if(changes.Name!==undefined){const nd=document.querySelector(`.tn[data-id="${S.edit.Id}"] .nm`);if(nd)nd.textContent=changes.Name}
         toast('保存成功','ok');document.getElementById('perm-dot').style.background='#52B54B';
     }catch(e){toast('保存失败: '+(e.message||''),'err');console.error('[NFO] save error:',e);
         if(e.message&&e.message.includes('403')){document.getElementById('perm-dot').style.background='#ef4444';toast('权限不足，请使用管理员账号','err')}
@@ -605,7 +609,9 @@ async function runBatch(){
     const items=ids.map(id=>findNode(id)).filter(Boolean);
     if(!items.length){toast('未找到选中项目','err');return}
 
-    S.batching=true;S.ac=new AbortController();
+    S.batching=true;
+    const controller=new AbortController();
+    S.ac=controller;
     const ov=document.getElementById('pov');ov.classList.add('show');
     let done=0,fail=0;const total=items.length;
 
@@ -623,36 +629,47 @@ async function runBatch(){
         }
         if(Object.keys(payload).length){
             try{
-                const fullRes=await api(`/Users/${C.userId}/Items/${it.Id}?Fields=Tags,TagItems,People,ProviderIds`);
+                const fullRes=await api(`/Users/${C.userId}/Items/${it.Id}?Fields=Tags,TagItems,People,ProviderIds`,{signal:controller.signal});
                 const full=await fullRes.json();
                 const merged={...full,...payload};
-                await updateItem(it.Id,merged);done++;
+                await updateItem(it.Id,merged,{signal:controller.signal});done++;
                 if(payload.Tags){const nd=document.querySelector(`.tn[data-id="${it.Id}"]`);if(nd){/* tag icon glow */}}
-            }catch(e){fail++;console.error('[NFO] batch item',it.Id,'error:',e.message)}
+            }catch(e){
+                if(e.name==='AbortError'||controller.signal.aborted)break;
+                fail++;console.error('[NFO] batch item',it.Id,'error:',e.message);
+            }
         }else done++;
 
+        if(controller.signal.aborted)break;
         document.getElementById('pv-text').textContent=`${done+fail} / ${total}${fail?` (${fail} 失败)`:''}`;
         document.getElementById('pv-fill').style.width=`${((done+fail)/total)*100}%`;
         await sleep(250);
     }
+    const cancelled=controller.signal.aborted;
+    if(S.ac===controller)S.ac=null;
     S.batching=false;ov.classList.remove('show');
+    if(cancelled)return;
     toast(fail?`完成 ${done} 项，${fail} 失败`:`成功更新 ${done} 项`,fail?'err':'ok');
     clearSel();
 }
 
-function cancelBatch(){S.batching=false;if(S.ac)S.ac.abort();document.getElementById('pov').classList.remove('show');toast('已取消','info')}
+function cancelBatch(){
+    if(!S.batching)return;
+    if(S.ac)S.ac.abort();
+    document.getElementById('pov').classList.remove('show');toast('已取消','info');
+}
 
 function findNode(id){for(const[,n]of S.tree){const f=n.kids.find(c=>String(c.Id)===String(id));if(f)return f}return null}
 
 async function api(path,opt={}){
     const url=`${C.base}${path}${path.includes('?')?'&':'?'}api_key=${C.token}`;
-    const r=await fetch(url,{...opt,headers:{'X-Emby-Authorization':C.hdr,...opt.headers},signal:S.ac?.signal});
+    const r=await fetch(url,{...opt,headers:{'X-Emby-Authorization':C.hdr,...opt.headers}});
     if(!r.ok){const body=await r.text().catch(()=>'');console.error('[NFO] API',r.status,body.slice(0,500));throw new Error(`API ${r.status}: ${body.slice(0,200)}`)}
     return r;
 }
 
-async function updateItem(id,payload){
-    const r=await api(`/Items/${id}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});return r;
+async function updateItem(id,payload,opt={}){
+    const r=await api(`/Items/${id}`,{...opt,method:'POST',headers:{'Content-Type':'application/json',...opt.headers},body:JSON.stringify(payload)});return r;
 }
 
 function refreshTree(){
