@@ -562,6 +562,7 @@
                                 </div>
                             </div>
 
+                            <!-- i18n:social-block-start -->
                             <div>
                                 <h4 class="text-gray-300">🚀 交流与支持</h4>
                                 <p class="text-gray-400 text-xs mt-2">💬 欢迎转发分享本项目，关注社媒动态、加群催更互动！</p>
@@ -607,6 +608,7 @@
                                         class="text-primary hover:underline">谢週五</a></p>
                                 <p>© 2026 保留所有权利</p>
                             </div>
+                            <!-- i18n:social-block-end -->
                         </div>
                     </div>
                 </div>
@@ -2319,7 +2321,7 @@
                     `DeviceId=${deviceId}`,
                     `PlaySessionId=${playSessionId}`,
                     forceReencode ? `VideoCodec=h264` : `VideoCodec=h264,hevc,vp9,av1`, // 强转码锁定 h264；流拷贝声明全格式，fMP4 容器原生支持 VP9/AV1 流拷贝
-                    `AudioCodec=aac,mp3,ac3`,
+                    `AudioCodec=aac,mp3,ac3,opus,flac,vorbis`,
                     forceReencode ? `VideoBitrate=20000000` : '',   // 仅强转码时限制码率（局域网 20Mbps 上限）；流拷贝时不限制，按源码率传输
                     `AudioBitrate=320000`,
                     `TranscodingMaxAudioChannels=2`,
@@ -2621,10 +2623,12 @@
                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
                 if (isIOS) {
-                    // 智能判定是否是原生完美支持的封装格式及编码（iOS 端 H.264/hvc1 MP4 视为完美格式，其他 HEVC 走 HLS 拷贝）
+                    // 智能判定是否是原生完美支持的封装格式及编码（iOS 端 H.264/hvc1 MP4 以及 WebM VP9 视为完美格式，免转码直连）
                     const isMp4Container = container.includes('mp4') || container.includes('m4v') || container.includes('mov');
+                    const isWebmVP9 = container.includes('webm') && (codec === 'vp9' || codec === 'vp8' || codec === 'h264');
                     const isNativeCompatible = (codec === 'h264' && isMp4Container) ||
-                                               (codec === 'hevc' && codecTag.includes('hvc1') && isMp4Container);
+                                               (codec === 'hevc' && codecTag.includes('hvc1') && isMp4Container) ||
+                                               isWebmVP9;
 
                     if (!isNativeCompatible) {
                         // 对于非完美兼容格式（如 HEVC hev1、VP9、AV1、MKV等），首播直接走轻量级的 HLS 视频流拷贝 (Direct Stream)
@@ -2634,7 +2638,7 @@
                 }
 
                 // 浏览器对 MKV/TS 等容器的原生支持不稳定，优先让服务端无损转封装为 MP4。
-                const isNativeContainer = ['mp4', 'm4v', 'mov'].some(type => container.includes(type));
+                const isNativeContainer = ['mp4', 'm4v', 'mov', 'webm'].some(type => container.includes(type));
                 if (!isIOS && !isNativeContainer) {
                     const playSessionId = this.state.playSessionId || ('ex_' + Date.now().toString(16));
                     const deviceId = this.config.deviceId || 'EmbyX-Device';
@@ -2645,7 +2649,7 @@
                         `DeviceId=${deviceId}`,
                         `PlaySessionId=${playSessionId}`,
                         `VideoCodec=h264,hevc,vp9,av1`,
-                        `AudioCodec=aac,mp3,ac3`,
+                        `AudioCodec=aac,mp3,ac3,opus,flac,vorbis`,
                         `AllowVideoStreamCopy=true`,
                         `AllowAudioStreamCopy=true`
                     ].filter(Boolean).join('&');

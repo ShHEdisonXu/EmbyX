@@ -5,6 +5,8 @@ EmbyX - 直播中转服务
 package main
 
 import (
+	"crypto/md5"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,6 +16,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -172,6 +176,10 @@ func handleFetchAvatar(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	switch platform {
+	case "douyin":
+		avatar, nickname, err = fetchDouyinInfo(roomID)
+	case "kuaishou":
+		avatar, nickname, err = fetchKuaishouInfo(roomID)
 	case "douyu":
 		avatar, nickname, err = fetchDouyuInfo(roomID)
 	case "huya":
@@ -292,15 +300,12 @@ func handlePlayRedirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 设备与格式智能判定：iOS/苹果移动端或非FLV格式走302重定向，防止iOS无法播放FLV或相对TS路径404
-	userAgent := r.Header.Get("User-Agent")
-	isAppleMobile := strings.Contains(userAgent, "iPhone") || strings.Contains(userAgent, "iPad") || strings.Contains(userAgent, "iPod") || (strings.Contains(userAgent, "Macintosh") && strings.Contains(userAgent, "Mobile"))
-	isFlv := strings.Contains(playURL, ".flv") || strings.Contains(playURL, "flv=") || strings.Contains(playURL, "/flv")
+	// HLS 直接交给 Emby；只有 FLV 需要经过本服务中继。
+	lowerPlayURL := strings.ToLower(playURL)
+	isFlv := strings.Contains(lowerPlayURL, ".flv") || strings.Contains(lowerPlayURL, "flv=") || strings.Contains(lowerPlayURL, "/flv")
 
-	// 智能分流
-	if isAppleMobile || !isFlv {
-		// 苹果端或 HLS/m3u8 协议流使用 302 直连重定向
-		log.Printf("🍏 iOS 设备或 HLS 协议流走 302 重定向: %s -> %s", name, playURL)
+	if !isFlv {
+		log.Printf("📺 HLS/直连协议流走 302 重定向: %s", name)
 		http.Redirect(w, r, playURL, http.StatusFound)
 		return
 	}
@@ -319,6 +324,10 @@ func handlePlayRedirect(w http.ResponseWriter, r *http.Request) {
 		req.Header.Set("Referer", "https://live.bilibili.com/")
 	} else if strings.Contains(playURL, "huya") {
 		req.Header.Set("Referer", "https://m.huya.com/")
+	} else if strings.Contains(playURL, "douyu") {
+		req.Header.Set("Referer", "https://www.douyu.com/")
+	} else if strings.Contains(playURL, "kuaishou") || strings.Contains(playURL, "kwaicdn") || strings.Contains(playURL, "yximgs") {
+		req.Header.Set("Referer", "https://live.kuaishou.com/")
 	}
 
 	resp, err := client.Do(req)
@@ -327,14 +336,19 @@ func handlePlayRedirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		http.Error(w, fmt.Sprintf("直播源返回 HTTP %d", resp.StatusCode), http.StatusBadGateway)
+		return
+	}
 
 	// chunked 块分发，保持原画无损低延时
 	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 	w.Header().Set("Transfer-Encoding", "chunked")
 
-	log.Printf("💻 PC端 FLV 直连中继启动: %s -> %s", name, playURL)
+	log.Printf("💻 FLV 中继启动: %s", name)
 	_, _ = io.Copy(w, resp.Body)
 }
+
 // 辅助函数：在一套 LiveConfig 配置中检索出指定主播/频道的播放 URL (包含实时解析)
 func findPlayURLInConfig(config LiveConfig, name string, playType string) (string, error) {
 	if playType == "manual" {
@@ -359,9 +373,443 @@ func findPlayURLInConfig(config LiveConfig, name string, playType string) (strin
 
 // ==================== 2. 直播流解析核心算法 ====================
 
+const (
+	desktopUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+	mobileUserAgent  = "ios/7.830 (ios 17.0; iPhone 15)"
+)
+
+func newLiveClient() *http.Client {
+	return &http.Client{Timeout: 8 * time.Second}
+}
+
+func readLiveResponse(resp *http.Response, platform string) ([]byte, error) {
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("%s 接口返回 HTTP %d", platform, resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if len(body) == 0 {
+		return nil, fmt.Errorf("%s 接口返回空数据", platform)
+	}
+	return body, nil
+}
+
+func normalizeRoomID(roomID string) string {
+	roomID = strings.TrimSpace(roomID)
+	if parsed, err := url.Parse(roomID); err == nil && parsed.Host != "" {
+		if id := strings.Trim(strings.TrimSpace(parsed.Path), "/"); id != "" {
+			parts := strings.Split(id, "/")
+			return parts[len(parts)-1]
+		}
+	}
+	return strings.Trim(roomID, "/")
+}
+
+func md5Hex(value string) string {
+	sum := md5.Sum([]byte(value))
+	return fmt.Sprintf("%x", sum)
+}
+
+type douyinUser struct {
+	Nickname    string `json:"nickname"`
+	AvatarThumb struct {
+		URLList []string `json:"url_list"`
+	} `json:"avatar_thumb"`
+}
+
+type douyinRoom struct {
+	IDStr  string     `json:"id_str"`
+	Title  string     `json:"title"`
+	Status int        `json:"status"`
+	Owner  douyinUser `json:"owner"`
+	Cover  struct {
+		URLList []string `json:"url_list"`
+	} `json:"cover"`
+	StreamURL struct {
+		HLS               map[string]string `json:"hls_pull_url_map"`
+		DefaultResolution string            `json:"default_resolution"`
+	} `json:"stream_url"`
+}
+
+type douyinRoomData struct {
+	Room   douyinRoom
+	Anchor douyinUser
+	WebRID string
+}
+
+func extractPaceJSON(input string) []string {
+	const marker = "__pace_f"
+	const endTag = "</script>"
+	var decodedParts []string
+
+	for {
+		markerIndex := strings.Index(input, marker)
+		if markerIndex < 0 {
+			break
+		}
+		input = input[markerIndex+len(marker):]
+		quoteIndex := strings.Index(input, `"`)
+		if quoteIndex < 0 {
+			continue
+		}
+		input = input[quoteIndex+1:]
+		endIndex := strings.Index(input, endTag)
+		if endIndex < 0 {
+			continue
+		}
+		lastQuote := strings.LastIndex(input[:endIndex], `"`)
+		if lastQuote < 0 {
+			continue
+		}
+		var decoded string
+		if json.Unmarshal([]byte(`"`+input[:lastQuote]+`"`), &decoded) == nil {
+			decodedParts = append(decodedParts, decoded)
+		}
+	}
+
+	var payloads []string
+	for _, line := range strings.Split(strings.Join(decodedParts, "\n"), "\n") {
+		start := strings.IndexAny(line, "[{")
+		end := strings.LastIndexAny(line, "]}")
+		if start >= 0 && end >= start {
+			payloads = append(payloads, line[start:end+1])
+		}
+	}
+	return payloads
+}
+
+func parseDouyinPage(body []byte) (douyinRoomData, error) {
+	type pageState struct {
+		State struct {
+			RoomStore struct {
+				RoomInfo struct {
+					Room   douyinRoom `json:"room"`
+					Anchor douyinUser `json:"anchor"`
+					WebRID string     `json:"web_rid"`
+				} `json:"roomInfo"`
+			} `json:"roomStore"`
+		} `json:"state"`
+	}
+
+	for _, payload := range extractPaceJSON(string(body)) {
+		var values []json.RawMessage
+		if json.Unmarshal([]byte(payload), &values) != nil {
+			continue
+		}
+		for _, raw := range values {
+			var page pageState
+			if json.Unmarshal(raw, &page) != nil {
+				continue
+			}
+			info := page.State.RoomStore.RoomInfo
+			if info.Room.IDStr != "" || info.Room.Owner.Nickname != "" || info.Anchor.Nickname != "" {
+				return douyinRoomData{Room: info.Room, Anchor: info.Anchor, WebRID: info.WebRID}, nil
+			}
+		}
+	}
+	return douyinRoomData{}, fmt.Errorf("未能从抖音页面读取直播间数据，可能触发了风控")
+}
+
+func fetchDouyinRoomOnce(roomID, cookie string) (douyinRoomData, error) {
+	roomID = normalizeRoomID(roomID)
+	req, err := http.NewRequest(http.MethodGet, "https://live.douyin.com/"+url.PathEscape(roomID), nil)
+	if err != nil {
+		return douyinRoomData{}, err
+	}
+	req.Header.Set("User-Agent", desktopUserAgent)
+	req.Header.Set("Referer", "https://live.douyin.com/")
+	if cookie == "" {
+		cookie = "__ac_nonce=064caded4009deafd8b89"
+	}
+	req.Header.Set("Cookie", cookie)
+	resp, err := newLiveClient().Do(req)
+	if err != nil {
+		return douyinRoomData{}, err
+	}
+	body, err := readLiveResponse(resp, "抖音")
+	if err != nil {
+		return douyinRoomData{}, err
+	}
+	return parseDouyinPage(body)
+}
+
+func fetchDouyinRoom(roomID string) (douyinRoomData, error) {
+	data, anonymousErr := fetchDouyinRoomOnce(roomID, "")
+	if anonymousErr == nil {
+		return data, nil
+	}
+	if cookie := strings.TrimSpace(os.Getenv("LIVE_DOUYIN_COOKIE")); cookie != "" {
+		if data, err := fetchDouyinRoomOnce(roomID, cookie); err == nil {
+			return data, nil
+		}
+	}
+	return douyinRoomData{}, anonymousErr
+}
+
+func selectDouyinHLS(streams map[string]string, defaultResolution string) string {
+	if defaultResolution != "" && streams[defaultResolution] != "" {
+		return streams[defaultResolution]
+	}
+	priorities := []string{"ORIGIN", "FULL_HD1", "FULL_HD", "HD1", "HD", "SD1", "SD2", "SD", "LD"}
+	for _, priority := range priorities {
+		if streams[priority] != "" {
+			return streams[priority]
+		}
+	}
+	keys := make([]string, 0, len(streams))
+	for key := range streams {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if streams[key] != "" {
+			return streams[key]
+		}
+	}
+	return ""
+}
+
+func parseDouyin(roomID string) (string, error) {
+	data, err := fetchDouyinRoom(roomID)
+	if err != nil {
+		return "", err
+	}
+	if data.Room.Status != 2 {
+		return "", fmt.Errorf("抖音主播当前未开播")
+	}
+	playURL := selectDouyinHLS(data.Room.StreamURL.HLS, data.Room.StreamURL.DefaultResolution)
+	if playURL == "" {
+		return "", fmt.Errorf("抖音未返回可用的 HLS 播放地址")
+	}
+	return playURL, nil
+}
+
+type streamCandidate struct {
+	URL     string
+	Bitrate int
+}
+
+func collectStreamCandidates(value any, candidates *[]streamCandidate) {
+	switch typed := value.(type) {
+	case map[string]any:
+		if rawURL, ok := typed["url"].(string); ok {
+			lowerURL := strings.ToLower(rawURL)
+			if strings.Contains(lowerURL, ".flv") || strings.Contains(lowerURL, ".m3u8") {
+				bitrate := 0
+				switch rawBitrate := typed["bitrate"].(type) {
+				case float64:
+					bitrate = int(rawBitrate)
+				case string:
+					bitrate, _ = strconv.Atoi(rawBitrate)
+				}
+				*candidates = append(*candidates, streamCandidate{URL: rawURL, Bitrate: bitrate})
+			}
+		}
+		for _, child := range typed {
+			collectStreamCandidates(child, candidates)
+		}
+	case []any:
+		for _, child := range typed {
+			collectStreamCandidates(child, candidates)
+		}
+	}
+}
+
+func selectHighestCandidate(candidates []streamCandidate, extension string) string {
+	bestIndex := -1
+	for index, candidate := range candidates {
+		if extension != "" && !strings.Contains(strings.ToLower(candidate.URL), extension) {
+			continue
+		}
+		if bestIndex < 0 || candidate.Bitrate >= candidates[bestIndex].Bitrate {
+			bestIndex = index
+		}
+	}
+	if bestIndex < 0 {
+		return ""
+	}
+	return candidates[bestIndex].URL
+}
+
+type kuaishouPageEntry struct {
+	LiveStream struct {
+		Caption  string          `json:"caption"`
+		PlayURLs json.RawMessage `json:"playUrls"`
+	} `json:"liveStream"`
+	Author struct {
+		ID     string `json:"id"`
+		Name   string `json:"name"`
+		Avatar string `json:"avatar"`
+	} `json:"author"`
+	IsLiving bool `json:"isLiving"`
+}
+
+func findKuaishouEntry(value any) map[string]any {
+	switch typed := value.(type) {
+	case map[string]any:
+		if _, ok := typed["liveStream"]; ok {
+			return typed
+		}
+		for _, child := range typed {
+			if found := findKuaishouEntry(child); found != nil {
+				return found
+			}
+		}
+	case []any:
+		for _, child := range typed {
+			if found := findKuaishouEntry(child); found != nil {
+				return found
+			}
+		}
+	}
+	return nil
+}
+
+func parseKuaishouPage(body []byte) (kuaishouPageEntry, []streamCandidate, error) {
+	statePattern := regexp.MustCompile(`(?s)<script>window\.__INITIAL_STATE__=(.*?);\(function\(\)\{var s;`)
+	match := statePattern.FindSubmatch(body)
+	if len(match) < 2 {
+		return kuaishouPageEntry{}, nil, fmt.Errorf("快手页面未包含直播数据")
+	}
+	stateJSON := regexp.MustCompile(`\bundefined\b`).ReplaceAll(match[1], []byte("null"))
+	var state any
+	if err := json.Unmarshal(stateJSON, &state); err != nil {
+		return kuaishouPageEntry{}, nil, fmt.Errorf("解析快手页面数据失败: %w", err)
+	}
+	var found map[string]any
+	if root, ok := state.(map[string]any); ok {
+		if liveRoom, ok := root["liveroom"].(map[string]any); ok {
+			if playList, ok := liveRoom["playList"].([]any); ok && len(playList) > 0 {
+				found, _ = playList[0].(map[string]any)
+			}
+		}
+	}
+	if found == nil {
+		found = findKuaishouEntry(state)
+	}
+	if found == nil {
+		return kuaishouPageEntry{}, nil, fmt.Errorf("快手主播当前未开播")
+	}
+	raw, _ := json.Marshal(found)
+	var entry kuaishouPageEntry
+	if err := json.Unmarshal(raw, &entry); err != nil {
+		return kuaishouPageEntry{}, nil, err
+	}
+	var playData any
+	if len(entry.LiveStream.PlayURLs) > 0 {
+		_ = json.Unmarshal(entry.LiveStream.PlayURLs, &playData)
+	}
+	var candidates []streamCandidate
+	collectStreamCandidates(playData, &candidates)
+	return entry, candidates, nil
+}
+
+func fetchKuaishouPage(roomID string) (kuaishouPageEntry, []streamCandidate, error) {
+	roomID = normalizeRoomID(roomID)
+	req, err := http.NewRequest(http.MethodGet, "https://live.kuaishou.com/u/"+url.PathEscape(roomID), nil)
+	if err != nil {
+		return kuaishouPageEntry{}, nil, err
+	}
+	req.Header.Set("User-Agent", desktopUserAgent)
+	if cookie := strings.TrimSpace(os.Getenv("LIVE_KUAISHOU_COOKIE")); cookie != "" {
+		req.Header.Set("Cookie", cookie)
+	}
+	resp, err := newLiveClient().Do(req)
+	if err != nil {
+		return kuaishouPageEntry{}, nil, err
+	}
+	body, err := readLiveResponse(resp, "快手")
+	if err != nil {
+		return kuaishouPageEntry{}, nil, err
+	}
+	return parseKuaishouPage(body)
+}
+
+func fetchKuaishouHLS(roomID, cookie string) (string, error) {
+	form := url.Values{
+		"source":      {"5"},
+		"eid":         {normalizeRoomID(roomID)},
+		"shareMethod": {"card"},
+		"clientType":  {"WEB_OUTSIDE_SHARE_H5"},
+	}
+	endpoint := "https://livev.m.chenzhongtech.com/rest/k/live/byUser?kpn=GAME_ZONE&captchaToken="
+	req, err := http.NewRequest(http.MethodPost, endpoint, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", mobileUserAgent)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Cookie", cookie)
+	resp, err := newLiveClient().Do(req)
+	if err != nil {
+		return "", err
+	}
+	body, err := readLiveResponse(resp, "快手 HLS")
+	if err != nil {
+		return "", err
+	}
+	var result struct {
+		LiveStream struct {
+			Living       bool   `json:"living"`
+			HLSPlayURL   string `json:"hlsPlayUrl"`
+			MultiHLSList []struct {
+				URLs []struct {
+					URL     string `json:"url"`
+					Bitrate int    `json:"bitrate"`
+				} `json:"urls"`
+			} `json:"multiResolutionHlsPlayUrls"`
+		} `json:"liveStream"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("解析快手 HLS 数据失败: %w", err)
+	}
+	var candidates []streamCandidate
+	for _, group := range result.LiveStream.MultiHLSList {
+		for _, item := range group.URLs {
+			candidates = append(candidates, streamCandidate{URL: item.URL, Bitrate: item.Bitrate})
+		}
+	}
+	if playURL := selectHighestCandidate(candidates, ".m3u8"); playURL != "" {
+		return playURL, nil
+	}
+	if result.LiveStream.HLSPlayURL != "" {
+		return result.LiveStream.HLSPlayURL, nil
+	}
+	return "", fmt.Errorf("快手未返回可用的 HLS 播放地址")
+}
+
+func parseKuaishou(roomID string) (string, error) {
+	var hlsErr error
+	if cookie := strings.TrimSpace(os.Getenv("LIVE_KUAISHOU_COOKIE")); cookie != "" {
+		if playURL, err := fetchKuaishouHLS(roomID, cookie); err == nil {
+			return playURL, nil
+		} else {
+			hlsErr = err
+		}
+	}
+	_, candidates, err := fetchKuaishouPage(roomID)
+	if err != nil {
+		if hlsErr != nil {
+			return "", fmt.Errorf("快手 HLS 解析失败: %v；FLV 回退失败: %w", hlsErr, err)
+		}
+		return "", err
+	}
+	if playURL := selectHighestCandidate(candidates, ".flv"); playURL != "" {
+		return playURL, nil
+	}
+	return "", fmt.Errorf("快手主播当前未开播或未返回可用直播流")
+}
+
 // 动态解析核心分流器
 func parseLiveStream(platform, roomID string) (string, error) {
 	switch platform {
+	case "douyin":
+		return parseDouyin(roomID)
+	case "kuaishou":
+		return parseKuaishou(roomID)
 	case "douyu":
 		return parseDouyu(roomID)
 	case "huya":
@@ -372,157 +820,381 @@ func parseLiveStream(platform, roomID string) (string, error) {
 	return "", fmt.Errorf("不支持的平台: %s", platform)
 }
 
-// A. 斗鱼免签 HTML5 播放流解析
+// 斗鱼当前网页接口稳定返回 FLV，使用公开加密参数计算匿名签名。
 func parseDouyu(roomID string) (string, error) {
-	client := &http.Client{Timeout: 5 * time.Second}
-	u := fmt.Sprintf("https://m.douyu.com/html5/live?roomId=%s", roomID)
-	req, _ := http.NewRequest("GET", u, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1")
+	const deviceID = "10000000000000000000000000001501"
+	roomID = normalizeRoomID(roomID)
+	headers := func(req *http.Request) {
+		req.Header.Set("User-Agent", desktopUserAgent)
+		req.Header.Set("Referer", "https://www.douyu.com/"+roomID)
+	}
 
-	resp, err := client.Do(req)
+	encryptionURL := "https://www.douyu.com/wgapi/livenc/liveweb/websec/getEncryption?did=" + deviceID
+	req, err := http.NewRequest(http.MethodGet, encryptionURL, nil)
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
-
-	var result struct {
-		Error int    `json:"error"`
-		Msg   string `json:"msg"`
-		Data  struct {
-			HlsURL string `json:"hls_url"`
-		} `json:"data"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	headers(req)
+	resp, err := newLiveClient().Do(req)
+	if err != nil {
 		return "", err
 	}
+	body, err := readLiveResponse(resp, "斗鱼签名")
+	if err != nil {
+		return "", err
+	}
+	var encryption struct {
+		Error int `json:"error"`
+		Data  struct {
+			RandStr   string `json:"rand_str"`
+			Key       string `json:"key"`
+			EncTime   int    `json:"enc_time"`
+			EncData   string `json:"enc_data"`
+			IsSpecial int    `json:"is_special"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &encryption); err != nil {
+		return "", err
+	}
+	if encryption.Error != 0 || encryption.Data.EncData == "" {
+		return "", fmt.Errorf("斗鱼签名参数获取失败")
+	}
 
+	timestamp := time.Now().Unix()
+	seed := encryption.Data.RandStr
+	for index := 0; index < encryption.Data.EncTime; index++ {
+		seed = md5Hex(seed + encryption.Data.Key)
+	}
+	suffix := ""
+	if encryption.Data.IsSpecial != 1 {
+		suffix = roomID + strconv.FormatInt(timestamp, 10)
+	}
+	auth := md5Hex(seed + encryption.Data.Key + suffix)
+	form := url.Values{
+		"enc_data": {encryption.Data.EncData},
+		"tt":       {strconv.FormatInt(timestamp, 10)},
+		"did":      {deviceID},
+		"auth":     {auth},
+		"cdn":      {""},
+		"rate":     {"0"},
+		"hevc":     {"0"},
+		"fa":       {"0"},
+		"ive":      {"0"},
+	}
+	playEndpoint := "https://www.douyu.com/lapi/live/getH5PlayV1/" + url.PathEscape(roomID)
+	req, err = http.NewRequest(http.MethodPost, playEndpoint, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", err
+	}
+	headers(req)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err = newLiveClient().Do(req)
+	if err != nil {
+		return "", err
+	}
+	body, err = readLiveResponse(resp, "斗鱼播放")
+	if err != nil {
+		return "", err
+	}
+	var result struct {
+		Error int             `json:"error"`
+		Msg   string          `json:"msg"`
+		Data  json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
 	if result.Error != 0 {
 		return "", fmt.Errorf("斗鱼 API 报错: %s", result.Msg)
 	}
-
-	if result.Data.HlsURL == "" {
-		return "", fmt.Errorf("未获取到斗鱼直播流链接，主播可能已下播")
+	var stream struct {
+		RTMPURL  string `json:"rtmp_url"`
+		RTMPLive string `json:"rtmp_live"`
 	}
-
-	return result.Data.HlsURL, nil
+	if err := json.Unmarshal(result.Data, &stream); err != nil {
+		return "", fmt.Errorf("解析斗鱼播放数据失败: %w", err)
+	}
+	if stream.RTMPURL == "" || stream.RTMPLive == "" {
+		return "", fmt.Errorf("斗鱼主播当前未开播或未返回可用直播流")
+	}
+	return strings.Replace(stream.RTMPURL+"/"+stream.RTMPLive, "http://", "https://", 1), nil
 }
 
-// B. 虎牙动态 m3u8 反算拼接解析
+type huyaStreamInfo struct {
+	CDNType     string `json:"sCdnType"`
+	StreamName  string `json:"sStreamName"`
+	FLVAntiCode string `json:"sFlvAntiCode"`
+	HLSURL      string `json:"sHlsUrl"`
+	HLSSuffix   string `json:"sHlsUrlSuffix"`
+}
+
+type huyaRoomData struct {
+	Status int `json:"status"`
+	Data   struct {
+		RealLiveStatus string `json:"realLiveStatus"`
+		ProfileInfo    struct {
+			Nick      string `json:"nick"`
+			Avatar180 string `json:"avatar180"`
+			Avatar    string `json:"avatar"`
+		} `json:"profileInfo"`
+		LiveData struct {
+			Introduction string `json:"introduction"`
+		} `json:"liveData"`
+		Stream struct {
+			BaseStreamInfoList []huyaStreamInfo `json:"baseSteamInfoList"`
+		} `json:"stream"`
+	} `json:"data"`
+}
+
+func fetchHuyaRoom(roomID string) (huyaRoomData, error) {
+	params := url.Values{
+		"m":          {"Live"},
+		"do":         {"profileRoom"},
+		"roomid":     {normalizeRoomID(roomID)},
+		"showSecret": {"1"},
+	}
+	req, err := http.NewRequest(http.MethodGet, "https://mp.huya.com/cache.php?"+params.Encode(), nil)
+	if err != nil {
+		return huyaRoomData{}, err
+	}
+	req.Header.Set("User-Agent", mobileUserAgent)
+	req.Header.Set("Referer", "https://servicewechat.com/wx74767bf0b684f7d3/301/page-frame.html")
+	resp, err := newLiveClient().Do(req)
+	if err != nil {
+		return huyaRoomData{}, err
+	}
+	body, err := readLiveResponse(resp, "虎牙")
+	if err != nil {
+		return huyaRoomData{}, err
+	}
+	var result huyaRoomData
+	if err := json.Unmarshal(body, &result); err != nil {
+		return huyaRoomData{}, err
+	}
+	if result.Status != http.StatusOK {
+		return huyaRoomData{}, fmt.Errorf("虎牙 API 返回状态 %d", result.Status)
+	}
+	return result, nil
+}
+
+func selectHuyaStream(streams []huyaStreamInfo) (huyaStreamInfo, bool) {
+	priorities := []string{"TX", "HW", "HS", "AL"}
+	for _, priority := range priorities {
+		for _, stream := range streams {
+			if strings.HasPrefix(stream.CDNType, priority) && stream.HLSURL != "" && stream.StreamName != "" && stream.FLVAntiCode != "" {
+				return stream, true
+			}
+		}
+	}
+	for _, stream := range streams {
+		if stream.HLSURL != "" && stream.StreamName != "" && stream.FLVAntiCode != "" {
+			return stream, true
+		}
+	}
+	return huyaStreamInfo{}, false
+}
+
+func buildHuyaHLS(stream huyaStreamInfo, now time.Time, uid, uuid int64) (string, error) {
+	query, err := url.ParseQuery(stream.FLVAntiCode)
+	if err != nil {
+		return "", err
+	}
+	fm, err := base64.StdEncoding.DecodeString(query.Get("fm"))
+	if err != nil {
+		return "", fmt.Errorf("解码虎牙 fm 参数失败: %w", err)
+	}
+	prefix := strings.Split(string(fm), "_")[0]
+	ctype := query.Get("ctype")
+	fs := query.Get("fs")
+	if prefix == "" || ctype == "" || fs == "" {
+		return "", fmt.Errorf("虎牙 anti-code 缺少必要参数")
+	}
+	const clientType = int64(100)
+	const sdkVersion = int64(2403051612)
+	timestampMillis := now.Unix() * 1000
+	sdkSID := timestampMillis
+	sequenceID := uid + sdkSID
+	wsTime := strconv.FormatInt((timestampMillis+110624)/1000, 16)
+	secretHash := md5Hex(fmt.Sprintf("%d|%s|%d", sequenceID, ctype, clientType))
+	wsSecret := md5Hex(fmt.Sprintf("%s_%d_%s_%s_%s", prefix, uid, stream.StreamName, secretHash, wsTime))
+	antiCode := url.Values{
+		"wsSecret": {wsSecret},
+		"wsTime":   {wsTime},
+		"seqid":    {strconv.FormatInt(sequenceID, 10)},
+		"ctype":    {ctype},
+		"ver":      {"1"},
+		"fs":       {fs},
+		"uuid":     {strconv.FormatInt(uuid, 10)},
+		"u":        {strconv.FormatInt(uid, 10)},
+		"t":        {strconv.FormatInt(clientType, 10)},
+		"sv":       {strconv.FormatInt(sdkVersion, 10)},
+		"sdk_sid":  {strconv.FormatInt(sdkSID, 10)},
+		"codec":    {"264"},
+	}
+	baseURL := strings.Replace(stream.HLSURL, "http://", "https://", 1)
+	suffix := stream.HLSSuffix
+	if suffix == "" {
+		suffix = "m3u8"
+	}
+	return fmt.Sprintf("%s/%s.%s?%s&ratio=", baseURL, stream.StreamName, suffix, antiCode.Encode()), nil
+}
+
+// 虎牙原始 anti-code 不能直接播放，需要按当前时间重新计算。
 func parseHuya(roomID string) (string, error) {
-	client := &http.Client{Timeout: 5 * time.Second}
-	u := fmt.Sprintf("https://m.huya.com/%s", roomID)
-	req, _ := http.NewRequest("GET", u, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1")
-
-	resp, err := client.Do(req)
+	data, err := fetchHuyaRoom(roomID)
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
+	if data.Data.RealLiveStatus != "ON" {
+		return "", fmt.Errorf("虎牙主播当前未开播")
 	}
-	bodyStr := string(bodyBytes)
-
-	// 正则提取 stream JSON 字符串
-	reg := regexp.MustCompile(`"stream"\s*:\s*(\{.+?\})`)
-	match := reg.FindStringSubmatch(bodyStr)
-	if len(match) < 2 {
-		return "", fmt.Errorf("未能从虎牙页面提取出播放流配置，主播可能已下播")
+	stream, ok := selectHuyaStream(data.Data.Stream.BaseStreamInfoList)
+	if !ok {
+		return "", fmt.Errorf("虎牙没有可用的 HLS 线路")
 	}
-
-	// 解析虎牙 stream 数据结构
-	var streamData struct {
-		Data []struct {
-			GameStreamInfoList []struct {
-				SFlvUrl       string `json:"sFlvUrl"`
-				SHlsUrl       string `json:"sHlsUrl"`
-				SStreamName   string `json:"sStreamName"`
-				SHlsUrlSuffix string `json:"sHlsUrlSuffix"`
-				SHlsAntiCode  string `json:"sHlsAntiCode"`
-			} `json:"gameStreamInfoList"`
-		} `json:"data"`
-	}
-
-	if err := json.Unmarshal([]byte(match[1]), &streamData); err != nil {
-		return "", err
-	}
-
-	if len(streamData.Data) == 0 || len(streamData.Data[0].GameStreamInfoList) == 0 {
-		return "", fmt.Errorf("虎牙没有可用的线路")
-	}
-
-	info := streamData.Data[0].GameStreamInfoList[0]
-	// 拼接真正的 HLS 播放流，虎牙 HLS 流最稳定
-	hlsURL := fmt.Sprintf("%s/%s.%s?%s", info.SHlsUrl, info.SStreamName, info.SHlsUrlSuffix, info.SHlsAntiCode)
-	// 将 http 转换为 https 兼容部分客户端
-	hlsURL = strings.Replace(hlsURL, "http://", "https://", 1)
-
-	return hlsURL, nil
+	now := time.Now()
+	uid := int64(1400000000000) + now.UnixNano()%10000000
+	uuid := ((now.Unix()*1000)%10000000000*1000 + int64(now.Nanosecond()%1000)) % 4294967295
+	return buildHuyaHLS(stream, now, uid, uuid)
 }
 
-// C. 哔哩哔哩官方免签 HLS 流解析
-func parseBilibili(roomID string) (string, error) {
-	client := &http.Client{Timeout: 5 * time.Second}
-	u := fmt.Sprintf("https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?room_id=%s&protocol=0,1&format=0,1,2&codec=0,1&platform=h5", roomID)
-	req, _ := http.NewRequest("GET", u, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1")
+type bilibiliCodec struct {
+	CodecName string `json:"codec_name"`
+	CurrentQN int    `json:"current_qn"`
+	BaseURL   string `json:"base_url"`
+	URLInfo   []struct {
+		Host  string `json:"host"`
+		Extra string `json:"extra"`
+	} `json:"url_info"`
+}
 
-	resp, err := client.Do(req)
+type bilibiliFormat struct {
+	FormatName string          `json:"format_name"`
+	Codec      []bilibiliCodec `json:"codec"`
+}
+
+type bilibiliStream struct {
+	ProtocolName string           `json:"protocol_name"`
+	Format       []bilibiliFormat `json:"format"`
+}
+
+func selectBilibiliURL(streams []bilibiliStream) string {
+	priorities := []struct {
+		Protocol string
+		Format   string
+		Codec    string
+	}{
+		{Protocol: "http_hls", Format: "ts", Codec: "avc"},
+		{Protocol: "http_hls", Format: "fmp4", Codec: "avc"},
+		{Protocol: "http_stream", Format: "flv", Codec: "avc"},
+	}
+	for _, priority := range priorities {
+		var selected *bilibiliCodec
+		for _, stream := range streams {
+			if stream.ProtocolName != priority.Protocol {
+				continue
+			}
+			for _, format := range stream.Format {
+				if format.FormatName != priority.Format {
+					continue
+				}
+				for index := range format.Codec {
+					codec := &format.Codec[index]
+					if codec.CodecName == priority.Codec && len(codec.URLInfo) > 0 && (selected == nil || codec.CurrentQN > selected.CurrentQN) {
+						selected = codec
+					}
+				}
+			}
+		}
+		if selected != nil {
+			return selected.URLInfo[0].Host + selected.BaseURL + selected.URLInfo[0].Extra
+		}
+	}
+	return ""
+}
+
+// B 站优先返回对浏览器兼容性最好的 AVC HLS。
+func parseBilibili(roomID string) (string, error) {
+	params := url.Values{
+		"room_id":  {normalizeRoomID(roomID)},
+		"protocol": {"0,1"},
+		"format":   {"0,1,2"},
+		"codec":    {"0,1"},
+		"qn":       {"10000"},
+		"platform": {"h5"},
+		"ptype":    {"8"},
+	}
+	endpoint := "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?" + params.Encode()
+	req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
-
+	req.Header.Set("User-Agent", desktopUserAgent)
+	req.Header.Set("Origin", "https://live.bilibili.com")
+	req.Header.Set("Referer", "https://live.bilibili.com/")
+	resp, err := newLiveClient().Do(req)
+	if err != nil {
+		return "", err
+	}
+	body, err := readLiveResponse(resp, "B站")
+	if err != nil {
+		return "", err
+	}
 	var result struct {
 		Code    int    `json:"code"`
 		Message string `json:"message"`
 		Data    struct {
+			LiveStatus  int `json:"live_status"`
 			PlayURLInfo struct {
 				PlayURL struct {
-					Stream []struct {
-						Format []struct {
-							Codec []struct {
-								BaseURL string `json:"base_url"`
-								URLInfo []struct {
-									Host  string `json:"host"`
-									Extra string `json:"extra"`
-								} `json:"url_info"`
-							} `json:"codec"`
-						} `json:"format"`
-					} `json:"stream"`
+					Stream []bilibiliStream `json:"stream"`
 				} `json:"playurl"`
 			} `json:"playurl_info"`
 		} `json:"data"`
 	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(body, &result); err != nil {
 		return "", err
 	}
-
 	if result.Code != 0 {
 		return "", fmt.Errorf("B站 API 报错: %s", result.Message)
 	}
-
-	stream := result.Data.PlayURLInfo.PlayURL.Stream
-	if len(stream) == 0 || len(stream[0].Format) == 0 || len(stream[0].Format[0].Codec) == 0 {
-		return "", fmt.Errorf("未获取到B站播放流链接，主播可能下播了")
+	if result.Data.LiveStatus == 0 {
+		return "", fmt.Errorf("B站主播当前未开播")
 	}
-
-	codec := stream[0].Format[0].Codec[0]
-	if len(codec.URLInfo) == 0 {
-		return "", fmt.Errorf("B站返回的 CDN 列表为空")
+	playURL := selectBilibiliURL(result.Data.PlayURLInfo.PlayURL.Stream)
+	if playURL == "" {
+		return "", fmt.Errorf("B站未返回可用的 AVC HLS/FLV 直播流")
 	}
-
-	// 拼接 m3u8
-	playURL := fmt.Sprintf("%s%s%s", codec.URLInfo[0].Host, codec.BaseURL, codec.URLInfo[0].Extra)
 	return playURL, nil
 }
 
 // ==================== 3. 联想头像与信息抓取逻辑 ====================
+
+func fetchDouyinInfo(roomID string) (string, string, error) {
+	data, err := fetchDouyinRoom(roomID)
+	if err != nil {
+		return "", "", err
+	}
+	user := data.Room.Owner
+	if user.Nickname == "" {
+		user = data.Anchor
+	}
+	avatar := ""
+	if len(user.AvatarThumb.URLList) > 0 {
+		avatar = user.AvatarThumb.URLList[0]
+	} else if len(data.Room.Cover.URLList) > 0 {
+		avatar = data.Room.Cover.URLList[0]
+	}
+	return avatar, user.Nickname, nil
+}
+
+func fetchKuaishouInfo(roomID string) (string, string, error) {
+	entry, _, err := fetchKuaishouPage(roomID)
+	if err != nil {
+		return "", "", err
+	}
+	return entry.Author.Avatar, entry.Author.Name, nil
+}
 
 // 斗鱼主播基本信息免签拉取
 func fetchDouyuInfo(roomID string) (string, string, error) {
@@ -556,54 +1228,16 @@ func fetchDouyuInfo(roomID string) (string, string, error) {
 	return result.Data.Avatar, result.Data.OwnerName, nil
 }
 
-// 虎牙主播基本信息免签拉取
 func fetchHuyaInfo(roomID string) (string, string, error) {
-	client := &http.Client{Timeout: 5 * time.Second}
-	u := fmt.Sprintf("https://m.huya.com/%s", roomID)
-	req, _ := http.NewRequest("GET", u, nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1")
-
-	resp, err := client.Do(req)
+	data, err := fetchHuyaRoom(roomID)
 	if err != nil {
 		return "", "", err
 	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", "", err
-	}
-	bodyStr := string(bodyBytes)
-
-	// 正则抓取昵称
-	regNick := regexp.MustCompile(`<p class="nick">(.+?)</p>`)
-	matchNick := regNick.FindStringSubmatch(bodyStr)
-	nickname := "未知主播"
-	if len(matchNick) >= 2 {
-		nickname = matchNick[1]
-	}
-
-	// 正则抓取头像
-	regAvatar := regexp.MustCompile(`<img class="avatar" src="(.+?)"`)
-	matchAvatar := regAvatar.FindStringSubmatch(bodyStr)
-	avatar := ""
-	if len(matchAvatar) >= 2 {
-		avatar = matchAvatar[1]
-		if !strings.HasPrefix(avatar, "http") {
-			avatar = "https:" + avatar
-		}
-	}
-
+	avatar := data.Data.ProfileInfo.Avatar180
 	if avatar == "" {
-		// 备用匹配逻辑
-		regAvatarBackup := regexp.MustCompile(`"avatar"\s*:\s*"(.+?)"`)
-		matchAvatarBackup := regAvatarBackup.FindStringSubmatch(bodyStr)
-		if len(matchAvatarBackup) >= 2 {
-			avatar = matchAvatarBackup[1]
-		}
+		avatar = data.Data.ProfileInfo.Avatar
 	}
-
-	return avatar, nickname, nil
+	return avatar, data.Data.ProfileInfo.Nick, nil
 }
 
 // B站主播基本信息免签拉取
@@ -712,7 +1346,9 @@ func syncStrmDirectory(config LiveConfig, baseURL string, targetOutDir string) {
 	// 3. 遍历动态配置列表
 	for _, item := range config.AutoList {
 		safeName := sanitizeFilename(item.Name)
-		platMap := map[string]string{"douyu": "斗鱼", "huya": "虎牙", "bilibili": "B站"}
+		platMap := map[string]string{
+			"douyin": "抖音", "kuaishou": "快手", "douyu": "斗鱼", "huya": "虎牙", "bilibili": "B站",
+		}
 		plat := platMap[item.Platform]
 		if plat == "" {
 			plat = item.Platform

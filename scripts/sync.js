@@ -310,6 +310,42 @@ function cmdApply() {
       'All Rights Reserved'
     );
 
+    // 保护 en 专属的社媒与 Get Involved 区域
+    const enSocialBlock = `<div>
+                                <h4 class="text-gray-300">🚀 Get Involved</h4>
+                                <ul class="list-disc list-inside space-y-1 text-gray-400 text-xs mt-3">
+                                    <li><span class="text-gray-300 font-medium">Community:</span> Follow the latest updates.</li>
+                                    <li><span class="text-gray-300 font-medium">Support:</span> Help me build more cool stuff.</li>
+                                </ul>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-4">
+                                    <a href="https://x.com/juneix_tse" target="_blank"
+                                        class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 h-11 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap">
+                                        <img src="https://cdn.simpleicons.org/x/white" class="w-3.5 h-3.5 mr-1.5"
+                                            alt="X" /> Twitter • Follow</a>
+                                    <a href="https://t.me/juneix_en" target="_blank"
+                                        class="flex items-center justify-center text-[#26A5E4] bg-[#26A5E4]/10 hover:bg-[#26A5E4]/20 px-3 h-11 rounded-full transition-colors border border-[#26A5E4]/20 text-[10px] whitespace-nowrap">
+                                        <img src="https://cdn.simpleicons.org/telegram/26A5E4"
+                                            class="w-3.5 h-3.5 mr-1.5" alt="Telegram" /> Telegram • Channel</a>
+                                    <a href="https://ko-fi.com/juneixtse" target="_blank"
+                                        class="flex items-center justify-center text-[#FF6433] bg-[#FF5E5B]/10 hover:bg-[#FF5E5B]/20 px-3 h-11 rounded-full transition-colors border border-[#FF5E5B]/20 text-[10px] whitespace-nowrap">
+                                        <img src="https://cdn.simpleicons.org/kofi/FF6433" class="w-3.5 h-3.5 mr-1.5"
+                                            alt="Ko-fi" /> Ko-fi • Support</a>
+                                    <a href="https://github.com/juneix/embyx" target="_blank"
+                                        class="flex items-center justify-center text-white bg-white/10 hover:bg-white/20 px-3 h-11 rounded-full transition-colors border border-white/20 text-[10px] whitespace-nowrap active:scale-95">
+                                        <img src="https://cdn.simpleicons.org/github/white" class="w-3.5 h-3.5 mr-1.5"
+                                            alt="GitHub" /> GitHub • Stars</a>
+                                </div>
+                            </div>
+
+                            <div
+                                class="pt-4 border-t border-gray-700/50 text-xs text-gray-500 text-center flex flex-col space-y-1">
+                                <p>Made with ❤️ by <a href="https://juneix.github.io" target="_blank"
+                                        class="text-primary hover:underline">Juneix</a></p>
+                                <p>© 2026 All Rights Reserved</p>
+                            </div>`;
+
+    content = content.replace(/<!-- i18n:social-block-start -->[\s\S]*?<!-- i18n:social-block-end -->/g, enSocialBlock);
+
     fs.mkdirSync(path.dirname(enPath), { recursive: true });
     fs.writeFileSync(enPath, content);
 
