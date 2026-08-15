@@ -3,8 +3,8 @@ set -e
 
 # 默认参数
 APP_LANG=${APP_LANG:-en}
-APP_PORT=${APP_PORT:-8090}
-LIVE_PORT=${LIVE_PORT:-8091}
+APP_PORT=${APP_PORT:-8092}
+LIVE_PORT=${LIVE_PORT:-8191}
 
 echo "Current Configuration:"
 echo " - Language:  $APP_LANG"
@@ -29,7 +29,7 @@ else
     cp -rf /app/dist/en/* /usr/share/nginx/html/
 fi
 
-# 启动 Go 语言直播中转后台守护进程 (绑定 8091)
+# 启动 Go 语言直播中转后台守护进程 (绑定 8191)
 /app/embyx-proxy &
 
 # 启动 nginx
