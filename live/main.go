@@ -75,8 +75,8 @@ func main() {
 	http.HandleFunc("/api/logo", handleGetLogo)
 	http.HandleFunc("/play", handlePlayRedirect)
 
-	// 后台运行在 8091 端口 (支持 LIVE_PORT 或 PROXY_PORT 环境变量控制)
-	port := "8091"
+	// 后台运行在 8191 端口 (支持 LIVE_PORT 或 PROXY_PORT 环境变量控制)
+	port := "8191"
 	if envPort := os.Getenv("LIVE_PORT"); envPort != "" {
 		port = envPort
 	} else if envPort := os.Getenv("PROXY_PORT"); envPort != "" {
