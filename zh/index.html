@@ -381,6 +381,10 @@
                                 <label class="text-gray-400 text-xs block mb-1.5">IP 或域名</label>
                                 <input type="text" id="configServer" placeholder="支持 Emby / Jellyfin / 飞牛影视"
                                     class="w-full h-11 bg-gray-900 text-white text-sm rounded px-3 outline-none border border-gray-700 focus:border-primary transition-colors focusable-item">
+                                <div class="flex gap-2 mt-2">
+                                    <button type="button" id="quickEmbyBtn" class="flex-1 h-9 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded border border-gray-600 transition-colors focusable-item">Emby :8096</button>
+                                    <button type="button" id="quickJellyfinBtn" class="flex-1 h-9 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded border border-gray-600 transition-colors focusable-item">Jellyfin :8097</button>
+                                </div>
                             </div>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
@@ -887,7 +891,11 @@
 
             // ═══ 配置与认证 ═══
             loadConfig() {
-                this.config.server = localStorage.getItem('emby_server') || '';
+                this.config.server = localStorage.getItem('emby_server') || (() => {
+                    let h = '127.0.0.1';
+                    try { h = location.hostname || '127.0.0.1'; } catch (e) {}
+                    return `http://${h}:8096`;
+                })();
                 this.config.user = localStorage.getItem('emby_user') || '';
                 this.config.token = localStorage.getItem('emby_token') || '';
                 this.config.userId = localStorage.getItem('emby_uid') || '';
@@ -3904,6 +3912,17 @@
 
                 document.getElementById('closeProfileBtn').onclick = () => this.toggleModal('profilePage', false);
                 document.getElementById('saveConfigBtn').onclick = () => this.saveConfig();
+                const applyQuickPort = (port) => {
+                    const cur = (this.dom.configServer?.value || '').trim().replace(/\/+$/, '');
+                    let host = '';
+                    try { host = location.hostname || ''; } catch (e) {}
+                    const m = cur.match(/^(?:[a-z]+:\/\/)?([^:\/]+)/i);
+                    if (m && m[1]) host = m[1];
+                    if (!host) host = '127.0.0.1';
+                    this.dom.configServer.value = `http://${host}:${port}`;
+                };
+                document.getElementById('quickEmbyBtn').onclick = () => applyQuickPort(8096);
+                document.getElementById('quickJellyfinBtn').onclick = () => applyQuickPort(8097);
                 document.getElementById('resetConfigBtn').onclick = () => this.resetConfig();
 
                 this.dom.confirmDeleteBtn.onclick = () => this.executeDelete();
