@@ -106,8 +106,8 @@ docker run -d \
   --name embyx \
   --network host \
   -e APP_LANG=en \
-  -e APP_PORT=8090 \
-  -e LIVE_PORT=8091 \
+  -e APP_PORT=8092 \
+  -e LIVE_PORT=8191 \
   ghcr.io/juneix/embyx
 ```
 #### Docker Compose:
@@ -121,8 +121,8 @@ services:
     network_mode: host
     environment:
       - APP_LANG=en # English Version
-      - APP_PORT=8090 # Access Port
-      - LIVE_PORT=8091 # Live Proxy Port
+      - APP_PORT=8092 # Access Port
+      - LIVE_PORT=8191 # Live Proxy Port
 ```
 
 ## ❤️ Support & Community
