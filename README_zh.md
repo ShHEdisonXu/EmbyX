@@ -94,7 +94,7 @@ EmbyX 是一款专为 Emby / Jellyfin 打造的 Web 原生应用，完美复刻�
 ## 📺 LIVE 助手
 
 Go 后端服务（`live/main.go`）可为您将抖音、斗鱼、虎牙、B站的主播房间或静态 m3u8 实时转换为 Emby 播放卡片：
-1. **启动服务**：本地执行 `go run live/main.go`（默认端口 `8091`）。
+1. **启动服务**：本地执行 `go run live/main.go`（默认端口 `8191`）。
 2. **导入 Emby**：在 Emby 媒体库中添加对应的文件夹路径。
 
 
@@ -135,8 +135,8 @@ docker run -d \
   --name embyx \
   --network host \
   -e APP_LANG=zh \
-  -e APP_PORT=8090 \
-  -e LIVE_PORT=8091 \
+  -e APP_PORT=8092 \
+  -e LIVE_PORT=8191 \
   ghcr.io/juneix/embyx
   # docker.1ms.run/juneix/embyx # 毫秒镜像加速
 ```
@@ -152,8 +152,8 @@ services:
     network_mode: host
     environment:
       - APP_LANG=zh # 中文版
-      - APP_PORT=8090 # 访问端口
-      - LIVE_PORT=8091 # 直播中转端口
+      - APP_PORT=8092 # 访问端口
+      - LIVE_PORT=8191 # 直播中转端口
 ```
 
 
