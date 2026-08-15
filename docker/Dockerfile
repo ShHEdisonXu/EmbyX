@@ -26,12 +26,12 @@ RUN chmod +x /entrypoint.sh
 
 # 预设默认语言和端口环境变量
 ENV APP_LANG=en
-ENV APP_PORT=8090
-ENV LIVE_PORT=8091
+ENV APP_PORT=8092
+ENV LIVE_PORT=8191
 
 # EXPOSE 在 host 模式下仅作声明
-EXPOSE 8090
-EXPOSE 8091
+EXPOSE 8092
+EXPOSE 8191
 
 # 使用自定义脚本启动
 ENTRYPOINT ["/entrypoint.sh"]
